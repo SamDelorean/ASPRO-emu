@@ -1,0 +1,33 @@
+# ASPRO-emu — Codex AP-02 integral: construir y demostrar ASPRO-DIAG
+Fecha de control: 2026-10-19
+Repositorio de producto: https://github.com/SamDelorean/ASPRO-emu
+Objetivo: cerrar el máximo de preparación/implementación en UN incremento coherente y preparar una intervención T de construcción y prueba real, sin micro-gates ni reconstrucción del MAME ya existente.
+
+**Lee antes de modificar** los archivos actuales `AGENTS.md`, `docs/MASTER_PLAN.md`, `docs/HANDOFF.md`, `docs/ROM_HARDWARE_MAP.md`, `docs/SOURCE_PROVENANCE.md`, `docs/AP01_STATIC_EVIDENCE.md`, `tools/build_diag.sh`, `tools/run_diag.py`, `tools/rom_audit.py` y `tools/static_selftest.py`. Fijar SHA del HEAD de ASPRO-emu leído. Consultar el código MAME preexistente `SamDelorean/mame-as3k` en commit `c4e48388ca620472643110db2941ce70aa5f3c07`, especialmente `src/mame/skeleton/alphasma.cpp` y soporte KS0066. No copiar firmware ni código propietario.
+
+**Directrices innegociables**
+- Único emulador de pruebas Pro: **ASPRO-DIAG**; ni MAME genérico, ni AS2K-STABLE, ni ASPRO-STABLE. Ninguna ejecución del Pro en variantes diferentes.
+- Reutilizar la infraestructura y el MAME reducido del AS2K existente. NO rehacer núcleo HC11, LCD KS0066, teclado, RAM ni reinstalar/compiler toolchains. No tocar ni sobrescribir ejecutable ni código base de AS2K.
+- La futura decisión de integrar Pro en AS2K o mantener ASPRO separado es del usuario, después del DIAG. No construir ASPRO-STABLE ni modificar Runtime AS2K.
+- STATIC_FIRST y anti-gate: un solo incremento significativo, estática agrupada, prueba DIAG sólo cuando haya binario real; no múltiples rondas de preparaciones simbólicas.
+- **Codex es convocado por este prompt que el usuario copia y pega.** No invocar Codex por ninguna integración automática o Commander.
+- La propuesta futura RAM A17 de `docs/ASPRO_HW_A17_EXPANSION_256K_CONCEPT.md` está archivada, NO pertenece a AP-02.
+- Commander T canónica: deviceId `dee0b4b6-578a-41a5-88de-73dbeb808983`; máximo **tres llamadas por intervención expresamente autorizada**, sin polling. NO consumir Commander desde Codex sin autorización adicional explícita del usuario. No crear jobs en colas globales dcjob sin verificar exclusividad por Drive.
+
+**Hechos y artefactos**
+- Driver MAME `src/mame/skeleton/alphasma.cpp` ya contiene máquina `asmapro`, MC68HC11D0, RAM bancaria, 2 KS0066, matriz de teclado; conserva `MACHINE_NOT_WORKING`.
+- ROM privada `alphasmartpro212.rom`, tamaño 32768, SHA256 `286000f3ffdd4802b4b1446032e108300c1fd6df7386c731b36dba00aef2d99e`; reset `$C000`. Drive (fuente privada, NO Git): `ALPHASMART/Alphasmart Pro/asmapro/alphasmartpro212.rom`.
+- CGROM privada `ks0066_f05.bin`, tamaño 4096, SHA1 `0196e871584ee5d370856e7307c0f9d1466e3e51`; Drive: `ALPHASMART/private/roms/ks0066/ks0066_f05.bin`.
+- Fuente de compilación T documentada: `/home/spc/Projects/alphasmart/mame-as2k`; ya tiene MAME 0.289. Reconciliar con evidencia de subtargets reducidos, **no abrir un árbol MAME nuevo**.
+
+**Implementación solicitada en el mismo incremento**
+1. Auditar y corregir los scripts AP-01 sin cambiar hardware innecesariamente. Hacer que la receta de compilación use `TARGET/SUBTARGET/SOURCES` del árbol actual, comprobando que sólo se genera `asprodiag`; no modificar código fuente AS2K. Evitar sobrescribir salidas y directorios de datos AS2K. No dar por hecho que compilar = arrancar.
+2. Preparar un **único script autónomo** `tools/ap02_run_once.sh`: comprueba dependencias conocidas con salidas bloqueantes claras; se ejecuta desde cualquier CWD; localiza el proyecto sin adivinar rutas; recupera las dos ROM privadas mediante `rclone` desde rutas verificadas, valida longitudes/hashes, compila únicamente `asprodiag`, lanza sólo `asmapro` con binario llamado `asprodiag`, y produce informe de identidad/resultado, logs acotados, hashes y estado determinístico en ubicación privada separada. No publicar nunca bytes ROM, CGROM, NVRAM, estados ni documento de usuario en Git. Limpieza segura de copias temporales tras uso, sin eliminar archivos ajenos.
+3. Revisar la sintaxis real del depurador MAME 0.289: `-debugscript`, `-debugger`, `rp/bp/wpset`, condiciones/acciones y captura de `logerror`. Evitar supuestos o pruebas falsas. Las sondas iniciales deben observar vector RESET, actividad de matriz `$8000/$C000`, cambios de banco y escritura al LCD, sin bucles infinitos ni trazas enormes. Si no hay base para demostrar un marcador, registrar `UNVERIFIED`.
+4. Implementar captura/inspección reproducible de la pantalla cuando los mecanismos existentes lo permitan y un ensayo de teclado determinista en DIAG. Tener presente que `-video none` puede impedir screenshot; decidir explícitamente entre modo captura válido o dejar esta subprueba `PENDING` sin fingirla. Mantener las funciones compartidas LCD/CPU del driver.
+5. Agregar prueba sintética local en Python de preparación, limpieza, SHA, contratos de comandos y fallos; y pruebas estáticas del shell y documentación coherente. Si Codex dispone del compilador real y un entorno privado autorizado, compilar; si no, dejar `COMPILE_PENDING`, no simular binario, ni transferir firmware a otro sistema.
+6. Crear/actualizar `docs/AP02_EXECUTION_AND_RESULTS.md` con rutas reales, versiones y SHA de código, matriz `STATIC_PASS/COMPILE_PENDING/DYNAMIC_PENDING`, fallos reales y acción concreta de la primera ejecución T. Actualizar `docs/HANDOFF.md` y README con estado sin sobreafirmaciones.
+7. Commitear y publicar el incremento en rama nueva de ASPRO-emu, suministrar SHA exacto y diff resumido. No modificar `SamDelorean/AS2K-V3.14.x` ni código de DynFS/Runtime. No añadir ni transferir un firmware propietario a GitHub.
+
+**Entrega al usuario**
+Devolver rama + SHA producto y HEAD, rutas de archivos cambiados, pruebas realmente ejecutadas, diferencia entre STATIC y DIAG funcional, e **instrucción agrupada única para T640** respetando máx. tres llamadas Commander autorizadas. Si la evidencia permite corrección concreta, incluirla dentro de la misma encomienda. No crear micro-gates, no pedir información ya disponible y no dar trabajo por terminado sin ejecución DIAG auténtica.
