@@ -60,6 +60,14 @@ for path in sorted(out.glob('*.log')):
 (out/'summary.json').write_text(json.dumps(report,indent=2)+'\n')
 print(json.dumps(report,indent=2))
 PY
+    # Derived evidence only: no ROM, CGROM, NVRAM, images or debugger traces.
+    key="ASPRO_AP02_${RUN##*/}"
+    if [[ -f "$RUN/summary.json" ]]; then
+        rclone copyto "$RUN/summary.json" "${REMOTE}AS2K_TEMP/COMMANDER_PIPELINE/outbox/${key}.summary.json" --retries 1 --timeout 45s || echo "WARN: summary upload failed" >&2
+    fi
+    if [[ -f "$RUN/diag-report.json" ]]; then
+        rclone copyto "$RUN/diag-report.json" "${REMOTE}AS2K_TEMP/COMMANDER_PIPELINE/outbox/${key}.diag.json" --retries 1 --timeout 45s || echo "WARN: diagnostic manifest upload failed" >&2
+    fi
     exit "$rc"
 }
 trap finish EXIT
