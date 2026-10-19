@@ -1,7 +1,10 @@
 # Plan maestro de ASPRO-emu
 
 ## Objetivo técnico
-Arrancar, visualizar y editar texto en la ROM AlphaSmart Pro 2.1.2 utilizando **MAME reducido**, reutilizando los componentes existentes de AS2K/Vontar. Solo ASPRO-DIAG se usa para pruebas; luego se extrae ASPRO-STABLE público.
+Arrancar, visualizar y editar texto en la ROM AlphaSmart Pro 2.1.2 utilizando **MAME reducido**, reutilizando los componentes existentes de AS2K/Vontar. Solo ASPRO-DIAG se usa para pruebas. La distribución estable y su integración en AS2K quedan expresamente **sin decidir** hasta completar la validación funcional y recibir una decisión del usuario.
+
+## Directiva superior vigente
+**ASPRO-DIAG primero y separado.** No fusionar, ampliar ni modificar el emulador AS2K existente. Al concluir la validación de ASPRO-DIAG, presentar evidencias técnicas y alternativas, y dejar al usuario la decisión final: (a) ampliar AS2K para ambos modelos o (b) conservar una distribución propia ASPRO. Ninguna de las opciones está aprobada por anticipado. Evitar gates y trabajos fraccionados.
 
 ## AP-01 — INCREMENTO ESTÁTICO INTEGRAL
 - Comparar ROM, fotos, especificaciones y driver MAME existente.
@@ -16,10 +19,10 @@ Arrancar, visualizar y editar texto en la ROM AlphaSmart Pro 2.1.2 utilizando **
 - Registrar errores y corregir la causa concreta en el mismo incremento, si la evidencia permite hacerlo.
 - La meta no es cerrar un gate RESET sino obtener pantalla y respuesta de teclado. Toda afirmación de éxito requiere evidencia funcional.
 
-## AP-03 — CIERRE Y PRODUCTO
+## AP-03 — CIERRE FUNCIONAL Y DECISIÓN POSTERIOR
 - Completar sólo las diferencias reales de banco, LCD, teclado, persistencia o temporización.
 - Calificar carga de archivos, editor y persistencia mediante ASPRO-DIAG.
-- Derivar ASPRO-STABLE público desde el código validado, eliminando sólo instrumentación; mantener instalador reducido y controles humanos similares al AS2K/Vontar.
+- Tras demostrar funcionalidad en ASPRO-DIAG, comparar coste real y mantenimiento de las dos opciones. **No construir ni publicar ASPRO-STABLE ni ampliar AS2K antes de la decisión expresa del usuario.**
 
 ## Sin burocracia
 No subdividir en PRE-01 / GATE-X / REQUALIFY a menos que un fallo real documentado lo exija. Reutilizar SHA, fuentes y resultados; no repetir PASS existentes. 3 llamadas Commander por intervención aprobada, máximo, sin polling.

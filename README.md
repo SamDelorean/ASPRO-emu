@@ -2,12 +2,15 @@
 
 Emulador reducido de AlphaSmart Pro basado en **MAME 0.289 y el driver existente `src/mame/skeleton/alphasma.cpp`**. El trabajo continúa el flujo técnico del emulador AS2K, sin reconstruir una CPU, LCD o matriz de teclado ya implementados.
 
-**Único entorno autorizado para pruebas:** `ASPRO-DIAG` (`asprodiag`). `ASPRO-STABLE` se derivará después de demostrar funcionamiento y no se usará como banco de pruebas.
+**Decisión arquitectónica (19-oct-2026):** desarrollar y validar primero ASPRO-DIAG como variante independiente. NO incorporar Pro a AS2K ni crear producto público estable durante esta etapa. Al terminar la calificación funcional de DIAG, el usuario decidirá entre ampliar AS2K o conservar ASPRO separado. No anticipar ni automatizar esa decisión.
+
+**Único entorno autorizado para pruebas:** `ASPRO-DIAG` (`asprodiag`). Una eventual versión estable dependerá de la decisión posterior del usuario y nunca se utilizará como banco de pruebas.
 
 ## Resultados disponibles
 
 - Firmware principal: AlphaSmart Pro 2.1.2, 32 KiB, SHA-1 `c3c6a421c9ced92db97431d04b4a3f09a39de716`; datos **privados fuera de Git**.
-- LCD externo: KS0066 F05 CGROM de 4096 bytes localizada en Drive, SHA1 `0196e871584ee5d370856e7307c0f9d1466e3e51` (necesaria para arranque fiel; privada).\n- Reutilización: MAME ya proporciona CPU MC68HC11D0, 2 × KS0066 (LCD 40×4), matriz de teclado 16 columnas, 128 KiB NVRAM y mapa Pro.
+- LCD externo: KS0066 F05 CGROM de 4096 bytes localizada en Drive, SHA1 `0196e871584ee5d370856e7307c0f9d1466e3e51` (necesaria para arranque fiel; privada).
+- Reutilización: MAME ya proporciona CPU MC68HC11D0, 2 × KS0066 (LCD 40×4), matriz de teclado 16 columnas, 128 KiB NVRAM y mapa Pro.
 - Archivo de origen recuperado: [SamDelorean/mame-as3k, `src/mame/skeleton/alphasma.cpp`](https://github.com/SamDelorean/mame-as3k/blob/c4e48388ca620472643110db2941ce70aa5f3c07/src/mame/skeleton/alphasma.cpp).
 - Estado: **implementación estática de runner, ROM audit y receta de subtarget**; ningún PASS dinámico reclamado.
 
