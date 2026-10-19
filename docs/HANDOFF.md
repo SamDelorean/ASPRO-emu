@@ -12,6 +12,8 @@ Hallazgo clave: el MAME existente ya incluye la emulación Pro en el **mismo** d
 
 **No hecho:** ninguna llamada Commander, ninguna compilación, ninguna ejecución MAME, ningún PASS funcional, ningún despliegue Vontar, ningún binario público.
 
+**AP-02 / flujo Codex manual:** [prompt integral listo para copiar y pegar](AP02_CODEX_PROMPT.md). Implementar el incremento como una sola entrega, sin invocar Codex automáticamente. La intervención Commander para compilar y ejecutar ASPRO-DIAG continúa sujeta al presupuesto y a la preparación real; sin PASS dinámico hasta obtener evidencias.
+
 **Siguiente paso único:** preparar un solo job autorizado T640 que ejecute `tools/rom_audit.py`, `tools/build_diag.sh`, `tools/run_diag.py` contra ROM privada Pro **y KS0066 F05** disponibles en T, almacenando resumen/logs en Drive, sin volver a reconstruir MAME completo ni realizar exploración de infraestructura. Analizar falla real, si ocurre, dentro de la misma intervención autorizada.
 
 **Reglas:** ASPRO-DIAG único emulador de pruebas, max 3 Commander/intervención expresamente aprobada, sin polling, STATIC_FIRST, anti-gate, no inventar prueba dinámica.
