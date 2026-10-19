@@ -1,0 +1,25 @@
+# ROM y contenidos personales: no versionar jamás
+*.rom
+*.ROM
+*.bin
+*.BIN
+*.hex
+*.HEX
+*.zip
+*.7z
+*.nv
+*.nvram
+*.sta
+*.state
+*.trace
+*.log
+*.jsonl
+roms/
+nvram/
+captures/
+private/
+out/
+build/
+__pycache__/
+*.pyc
+.DS_Store
