@@ -1,6 +1,6 @@
 # ASPRO-emu
 
-Emulador reducido de AlphaSmart Pro basado en **MAME 0.289 y el driver existente `src/mame/skeleton/alphasma.cpp`**. El trabajo continúa el flujo técnico del emulador AS2K, sin reconstruir una CPU, LCD o matriz de teclado ya implementados.
+Emulador reducido de AlphaSmart Pro basado en **MAME 0.289 y el driver existente `src/mame/skeleton/alphasma.cpp`**. **Único entorno de desarrollo ASPRO-emu; AS2K es referencia de código en sólo lectura y no se usa para compilar el Pro.** El trabajo continúa el flujo técnico del emulador AS2K, sin reconstruir una CPU, LCD o matriz de teclado ya implementados.
 
 **Decisión arquitectónica (19-oct-2026):** desarrollar y validar primero ASPRO-DIAG como variante independiente. NO incorporar Pro a AS2K ni crear producto público estable durante esta etapa. Al terminar la calificación funcional de DIAG, el usuario decidirá entre ampliar AS2K o conservar ASPRO separado. No anticipar ni automatizar esa decisión.
 
@@ -18,12 +18,12 @@ Emulador reducido de AlphaSmart Pro basado en **MAME 0.289 y el driver existente
 
 ```bash
 python3 tools/rom_audit.py --rom /ruta/privada/alphasmartpro212.rom --json
-bash tools/build_diag.sh /ruta/al/arbol/MAME 2
+bash tools/build_diag.sh /ruta/al/workspace/ASPRO-MAME 2
 python3 tools/run_diag.py --rom /ruta/privada/alphasmartpro212.rom --lcd-rom /ruta/privada/ks0066_f05.bin --bin /ruta/al/arbol/MAME/asprodiag --seconds 8
 python3 tools/static_selftest.py
 ```
 
-La construcción reducida usa `make SUBTARGET=asprodiag SOURCES=src/mame/skeleton/alphasma.cpp REGENIE=1` del propio MAME; evita volver a importar o modificar su código, y utiliza el mismo driver del que ya procede el AS2K. Solo crea resultados de compilación de subtarget. Para reducir aún más el binario a **un único sistema Pro**, se podrá aplicar `SOURCEFILTER` del MAME **solo después de comprobar su contrato**; no sustituir la primera ejecución por esa optimización.
+La construcción reducida requiere explícitamente un **árbol de construcción ASPRO independiente**, nunca el árbol AS2K. La construcción reducida usa `make SUBTARGET=asprodiag SOURCES=src/mame/skeleton/alphasma.cpp REGENIE=1` del propio MAME; evita volver a importar o modificar su código, y utiliza el mismo driver del que ya procede el AS2K. Solo crea resultados de compilación de subtarget. Para reducir aún más el binario a **un único sistema Pro**, se podrá aplicar `SOURCEFILTER` del MAME **solo después de comprobar su contrato**; no sustituir la primera ejecución por esa optimización.
 
 El runner prepara un `asmapro.zip` temporal con la ROM original, de uso local exclusivamente, y genera logs y estado en un directorio de diagnóstico separado. La ROM nunca se versiona, no se imprime y no se altera.
 

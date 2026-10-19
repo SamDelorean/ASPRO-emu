@@ -1,7 +1,17 @@
 #!/usr/bin/env bash
-# Construcción reducida MAME desde el árbol existente; NO construir MAME genérico.
+# Construcción reducida MAME en workspace ASPRO EXCLUSIVO, AS2K sólo referencia de código; NO compilar en AS2K.
 set -euo pipefail
-MAME_ROOT="${1:-/home/spc/Projects/alphasmart/mame-as2k}"
+MAME_ROOT="${1:-${ASPRO_MAME_ROOT:-}}"
+if [[ -z "$MAME_ROOT" ]]; then
+  echo "BLOCKED: indicar árbol MAME de construcción ASPRO independiente como arg1 o ASPRO_MAME_ROOT; AS2K es sólo referencia" >&2
+  exit 2
+fi
+MAME_ROOT="$(realpath -m "$MAME_ROOT")"
+case "${MAME_ROOT,,}" in
+  *mame-as2k*|*as2k-stable*|*as2k-diag*)
+    echo "BLOCKED: nunca compilar dentro de AS2K; árbol prohibido: $MAME_ROOT" >&2
+    exit 2;;
+esac
 JOBS="${2:-2}"
 if [[ ! -d "$MAME_ROOT" || ! -f "$MAME_ROOT/makefile" ]]; then
   echo "BLOCKED: falta árbol canónico MAME: $MAME_ROOT" >&2; exit 2

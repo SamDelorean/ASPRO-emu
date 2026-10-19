@@ -4,6 +4,10 @@
 Arrancar, visualizar y editar texto en la ROM AlphaSmart Pro 2.1.2 utilizando **MAME reducido**, reutilizando los componentes existentes de AS2K/Vontar. Solo ASPRO-DIAG se usa para pruebas. La distribución estable y su integración en AS2K quedan expresamente **sin decidir** hasta completar la validación funcional y recibir una decisión del usuario.
 
 ## Directiva superior vigente
+**Entorno de trabajo exclusivamente ASPRO-emu.** AS2K es una **referencia de código en sólo lectura**, no un workspace para compilar o editar. Toda construcción Pro se realiza en entorno autónomo ASPRO (directorio y outputs independientes). No llamar `make` sobre el árbol AS2K.
+
+**Codex:** para reintentos con cuenta ChatGPT, usar selector **Predeterminado** o modelo explícitamente admitido, nunca forzar `gpt-5.5` después del error de compatibilidad. El modelo se configura en el cliente Codex, no en el encargo.
+
 **ASPRO-DIAG primero y separado.** No fusionar, ampliar ni modificar el emulador AS2K existente. Al concluir la validación de ASPRO-DIAG, presentar evidencias técnicas y alternativas, y dejar al usuario la decisión final: (a) ampliar AS2K para ambos modelos o (b) conservar una distribución propia ASPRO. Ninguna de las opciones está aprobada por anticipado. Evitar gates y trabajos fraccionados.
 
 ## AP-01 — INCREMENTO ESTÁTICO INTEGRAL
@@ -16,7 +20,7 @@ Arrancar, visualizar y editar texto en la ROM AlphaSmart Pro 2.1.2 utilizando **
 - [ASPRO-HW-A17](ASPRO_HW_A17_EXPANSION_256K_CONCEPT.md): expansión 128→256 KiB con A17 retenido en latch, a validar eléctricamente; queda aplazada hasta después de AP-02 y no implica un cambio del hardware ni del plan de emulación.
 
 ## AP-02 — ÚNICA INTERVENCIÓN DIRIGIDA EN T (por autorizar)
-- Verificar ruta del árbol canónico y variante instalada a partir de documentación; no explorar sin necesidad.
+- Reconciliar las referencias AS2K/MAME en lectura y trabajar sólo en workspace ASPRO independiente; no compilar dentro de AS2K ni alterar sus objetos, cachés o ejecutables.
 - Compilar `asprodiag` reducido usando `SOURCES`, sin construir MAME completo y sin modificar fuente original.
 - Ejecutar la ROM privada bajo `asprodiag` con script diagnóstico y observación RESET→teclado→LCD.
 - Registrar errores y corregir la causa concreta en el mismo incremento, si la evidencia permite hacerlo.

@@ -1,5 +1,7 @@
 # Handoff — 2026-10-19 / AP-01
 
+**Corrección 2026-10-19, prioritaria:** ASPRO es el **único entorno de trabajo**. AS2K se consulta solamente como **referencia de código**. El árbol y caché de compilación de AS2K no se alteran. Codex con cuenta ChatGPT falla con `gpt-5.5`; para reintento, seleccionar **Predeterminado** o un modelo efectivamente disponible en el cliente antes de enviar el prompt. Prompt corregido: [AP02_CODEX_PROMPT.md](AP02_CODEX_PROMPT.md).
+
 **Directiva máxima actualizada:** primero ASPRO-DIAG independiente. La decisión de ampliar AS2K o mantener ASPRO separado se tomará solamente al finalizar la calificación funcional de DIAG. No modificar AS2K ni producir versión estable por adelantado.
 
 **Idea preservada para fase futura:** [A17 y SRAM 256 KiB](ASPRO_HW_A17_EXPANSION_256K_CONCEPT.md) — decodificador + registro externo, SIN validación eléctrica, NO condiciona ASPRO-DIAG.
@@ -14,7 +16,7 @@ Hallazgo clave: el MAME existente ya incluye la emulación Pro en el **mismo** d
 
 **AP-02 / flujo Codex manual:** [prompt integral listo para copiar y pegar](AP02_CODEX_PROMPT.md). Implementar el incremento como una sola entrega, sin invocar Codex automáticamente. La intervención Commander para compilar y ejecutar ASPRO-DIAG continúa sujeta al presupuesto y a la preparación real; sin PASS dinámico hasta obtener evidencias.
 
-**Siguiente paso único:** preparar un solo job autorizado T640 que ejecute `tools/rom_audit.py`, `tools/build_diag.sh`, `tools/run_diag.py` contra ROM privada Pro **y KS0066 F05** disponibles en T, almacenando resumen/logs en Drive, sin volver a reconstruir MAME completo ni realizar exploración de infraestructura. Analizar falla real, si ocurre, dentro de la misma intervención autorizada.
+**Siguiente paso único:** tras la corrección de entorno, preparar un solo job autorizado T640 que ejecute `tools/rom_audit.py`, `tools/build_diag.sh`, `tools/run_diag.py` contra ROM privada Pro **y KS0066 F05** disponibles en T, almacenando resumen/logs en Drive, sin volver a reconstruir MAME completo ni realizar exploración de infraestructura. Analizar falla real, si ocurre, dentro de la misma intervención autorizada.
 
 **Reglas:** ASPRO-DIAG único emulador de pruebas, max 3 Commander/intervención expresamente aprobada, sin polling, STATIC_FIRST, anti-gate, no inventar prueba dinámica.
 
