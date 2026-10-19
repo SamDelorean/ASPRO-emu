@@ -48,3 +48,8 @@ No se transfirió ROM a Cloud ni se ejecutó Commander.
 agrupada y límites descritos en [AP02_EXECUTION_AND_RESULTS.md](AP02_EXECUTION_AND_RESULTS.md).
 AS2K anfitrión quedó intacto en SHA `9cc0bd98aeb21e2ea77de878a8833a1047c88169`.
 No hay PR, ASPRO-STABLE ni decisión de integración anticipada.
+
+**SHA de producto AP-02:** `54bb6a96e3afdc45dd9f016b76f08e8f8ef100d0`.
+Este añadido es sólo de handoff; el siguiente HEAD lo identifica sin cambiar el
+código comprobado. No confundir el SHA del paquete estático con un binario
+compilado o una prueba funcional. Destino publicado exclusivamente ASPRO-emu.
