@@ -170,3 +170,11 @@ Comprobación adicional del camino bloqueante real: se invocó el job desde `/tm
 con un nombre rclone deliberadamente no configurado. Devolvió exit 2 y
 `BLOCKED_DRIVE_REMOTE`, antes de exportar fuentes, compilar o recuperar ROMs.
 Esta prueba verifica localización por CWD y fallo seguro; no es ejecución DIAG.
+
+## AP-02 fast path — reutilización de MAME-DIAG AS2K en la T (2026-10-19)
+
+La infraestructura canónica de T640 incluye MAME 0.289, `as2kdiag`, rclone `googledrive:`, sudo y compilaciones ya ejecutadas. Las carencias de Codex Cloud no implican carencias de la T. No reabrir esos preflights sin error real.
+
+Se añadió `tools/adopt_engine.py`, que **sólo consulta** `-listxml asmapro` en el ejecutable `as2kdiag` ya existente y exige la ROM Pro exacta por SHA-1. Si la máquina está incluida, realiza copia **independiente** del binario en `ASPRO-emu/build/prebuilt/asprodiag` y registra hashes/procedencia. Nunca ejecuta Pro usando `as2kdiag`, no escribe en AS2K y no declara PASS por copiar un ejecutable. Si `asmapro` falta, `tools/ap02_run_once.sh` cae automáticamente a la compilación ASPRO reducida de AP-02 en un directorio independiente.
+
+No repetir pruebas HC11, LCD ni teclado ya cerradas en AS2K: la única prueba nueva consiste en el firmware y el mapa de plataforma Pro (RESET, teclado, LCD, SRAM). Esta optimización **no ha sido ejecutada ni validada en T**. Toda intervención Commander debe contar con autorización concreta y preservar su máximo de llamadas.

@@ -37,13 +37,22 @@ def validate_inputs(rom, lcd_rom, binary):
     binary=binary.resolve(strict=True)
     if binary.name!='asprodiag' or not binary.is_file() or not os.access(binary,os.X_OK):
         raise ValueError('only an executable named asprodiag is allowed')
-    validate_tree(binary.parent)
     info=json.loads((binary.parent/'.aspro-binary.json').read_text())
     with binary.open('rb') as f:
         native=f.read(4)==b'\x7fELF'
-    if (not native or info.get('source_commit')!=COMMIT or info.get('subtarget')!='asprodiag'
-            or info.get('binary_sha256')!=sha(binary)):
-        raise ValueError('binary build provenance mismatch; run tools/build_diag.sh')
+    if not native or info.get('binary_sha256')!=sha(binary):
+        raise ValueError('binary hash/ELF mismatch')
+    if info.get('mode')=='adopted_prebuilt_as2kdiag':
+        if (binary.parent!=(ROOT/'build/prebuilt').resolve()
+            or info.get('machine')!='asmapro'
+            or info.get('rom_sha1')!='c3c6a421c9ced92db97431d04b4a3f09a39de716'
+            or info.get('probe')!='listxml_asmapro'
+            or info.get('donor_sha256')!=info.get('binary_sha256')):
+            raise ValueError('unverified adopted DIAG binary')
+    else:
+        validate_tree(binary.parent)
+        if info.get('source_commit')!=COMMIT or info.get('subtarget')!='asprodiag':
+            raise ValueError('binary build provenance mismatch; run tools/build_diag.sh')
     return audit,binary
 
 def debugger_script():

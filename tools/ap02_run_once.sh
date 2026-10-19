@@ -20,17 +20,14 @@ while (($#)); do
 done
 [[ -n "$SOURCE" && "$REMOTE" =~ ^[A-Za-z0-9_-]+:$ && "$JOBS" =~ ^[1-9][0-9]*$ ]] || { usage; exit 2; }
 [[ "$CAPTURE" == auto || "$CAPTURE" == none || "$CAPTURE" == soft ]] || { usage; exit 2; }
-for tool in python3 git rclone make g++ pkg-config tail sed grep; do
+for tool in python3 git rclone tail sed grep; do
     command -v "$tool" >/dev/null || { echo "BLOCKED_DEPENDENCY: $tool" >&2; exit 2; }
 done
 # Existing names only; no config/credential dump or interactive login.
 rclone listremotes 2>/dev/null | grep -Fx -- "$REMOTE" >/dev/null || {
     echo 'BLOCKED_DRIVE_REMOTE: provide an already configured rclone remote name' >&2; exit 2;
 }
-# No ROM transfer before known build dependencies and source access are usable.
-pkg-config --exists sdl2 SDL2_ttf fontconfig || {
-    echo 'COMPILE_PENDING: missing SDL2/SDL2_ttf/fontconfig development packages' >&2; exit 2;
-}
+# Avoid demanding compiler/SDL development packages if the existing DIAG engine qualifies.
 PRIVATE="$ROOT/private/ap02"
 # Prevent symlink aliases into a reference tree; this directory is never uploaded.
 python3 - "$ROOT" "$PRIVATE" <<'PY'
@@ -74,12 +71,24 @@ trap 'STATUS=INTERRUPTED; exit 143' TERM HUP
     g++ --version | sed -n '1p'
     rclone version | sed -n '1,2p'
 } >"$RUN/tool-versions.log"
-python3 "$ROOT/tools/prepare_mame.py" --source "$SOURCE" --dest "$ROOT/build/mame" >"$RUN/source.json"
-PHASE=BUILD
-# Bounded retained build log; pipefail preserves make/build errors. No limits
-# imposed on object file sizes. No AS2K caches, objects or binaries are reused.
-bash "$ROOT/tools/build_diag.sh" "$ROOT/build/mame" "$JOBS" 2>&1 | tail -c 1048576 >"$RUN/build.log"
-COMPILE=COMPILED_ONLY
+PHASE=ADOPT_ENGINE
+ENGINE="$ROOT/build/prebuilt/asprodiag"
+if python3 "$ROOT/tools/adopt_engine.py" --reference-bin "$SOURCE/as2kdiag" >"$RUN/engine.json" 2>"$RUN/adopt.log"; then
+    COMPILE=PREBUILT_ADOPTED
+    printf '%s\n' 'MAME reference engine copied and checked: no rebuild needed' >"$RUN/build.log"
+else
+    PHASE=BUILD
+    for tool in make g++ pkg-config; do
+        command -v "$tool" >/dev/null || { echo "COMPILE_PENDING: missing $tool" >&2; exit 2; }
+    done
+    pkg-config --exists sdl2 SDL2_ttf fontconfig || {
+        echo 'COMPILE_PENDING: missing SDL2/SDL2_ttf/fontconfig dev packages' >&2; exit 2;
+    }
+    python3 "$ROOT/tools/prepare_mame.py" --source "$SOURCE" --dest "$ROOT/build/mame" >"$RUN/source.json"
+    bash "$ROOT/tools/build_diag.sh" "$ROOT/build/mame" "$JOBS" 2>&1 | tail -c 1048576 >"$RUN/build.log"
+    COMPILE=COMPILED_ONLY
+    ENGINE="$ROOT/build/mame/asprodiag"
+fi
 PHASE=FETCH_PRIVATE
 INPUTS=$(mktemp -d "$RUN/inputs-XXXXXXXX")
 PRO_PATH='ALPHASMART/Alphasmart Pro/asmapro/alphasmartpro212.rom'
@@ -94,7 +103,7 @@ PHASE=INPUT_IDENTITY
 python3 "$ROOT/tools/rom_audit.py" --rom "$INPUTS/alphasmartpro212.rom" --require-212 --json >"$RUN/rom-audit.json"
 PHASE=DIAG
 python3 "$ROOT/tools/run_diag.py" --rom "$INPUTS/alphasmartpro212.rom" \
-    --lcd-rom "$INPUTS/ks0066_f05.bin" --bin "$ROOT/build/mame/asprodiag" \
+    --lcd-rom "$INPUTS/ks0066_f05.bin" --bin "$ENGINE" \
     --out "$RUN" --seconds 8 --capture "$CAPTURE" >"$RUN/diag-report.json"
 PHASE=DONE STATUS=DIAG_COMPLETED_FUNCTIONAL_UNVERIFIED
 echo 'No functional PASS claimed; inspect private DIAG evidence before classification.'
