@@ -10,6 +10,7 @@ import subprocess
 import sys
 import zipfile
 from rom_audit import audit_rom, EXPECTED_SHA1
+KS0066_F05_SHA1 = "0196e871584ee5d370856e7307c0f9d1466e3e51"
 
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -17,6 +18,8 @@ def sha(path):
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--rom", type=pathlib.Path, required=True)
+    p.add_argument("--lcd-rom", type=pathlib.Path, required=True,
+                   help="ks0066_f05.bin (4096 bytes), CGROM privada existente en Drive")
     p.add_argument("--bin", dest="binary", type=pathlib.Path, required=True)
     p.add_argument("--out", type=pathlib.Path, default=pathlib.Path.home()/".local/state/aspro-diag")
     p.add_argument("--seconds", type=int, default=8)
@@ -30,6 +33,14 @@ def main(argv=None):
         return 2
     if audit["sha1"] != EXPECTED_SHA1:
         print("BLOCKED: ROM distinta de AlphaSmart Pro v2.1.2 calificada", file=sys.stderr)
+        return 2
+    try:
+        lcd = args.lcd_rom.read_bytes()
+    except OSError as exc:
+        print(f"BLOCKED: KS0066 F05 ausente: {exc}", file=sys.stderr)
+        return 2
+    if len(lcd) != 4096 or hashlib.sha1(lcd).hexdigest() != KS0066_F05_SHA1:
+        print("BLOCKED: KS0066 F05 debe coincidir exactamente con ROM caracter LCD", file=sys.stderr)
         return 2
     binary = args.binary.resolve()
     if binary.name != "asprodiag" or not binary.is_file():
@@ -50,6 +61,9 @@ def main(argv=None):
     # Copia temporal privada, no subir ZIP a repositorio ni outbox compartido.
     with zipfile.ZipFile(zpath, "w", zipfile.ZIP_STORED) as z:
         z.write(args.rom, arcname="alphasmartpro212.rom")
+    lcdzip = rom_dir / "ks0066.zip"
+    with zipfile.ZipFile(lcdzip, "w", zipfile.ZIP_STORED) as z:
+        z.write(args.lcd_rom, arcname="ks0066_f05.bin")
     for name in ("nvram", "cfg", "state", "input", "snap"):
         (out/name).mkdir()
     debugscript = out / "aspro_reset.cmd"
@@ -71,7 +85,8 @@ def main(argv=None):
     ]
     report = {
         "variant": "ASPRO-DIAG", "system": "asmapro",
-        "rom_sha256": audit["sha256"], "bin_sha256": sha(binary),
+        "rom_sha256": audit["sha256"], "lcd_sha1": KS0066_F05_SHA1,
+        "bin_sha256": sha(binary),
         "run_dir": str(out), "seconds_requested": args.seconds,
         "status": "EXECUTION_PENDING", "functional_pass": False,
         "note": "exit=0 o breakpoint aislado no prueban LCD/teclado"
@@ -90,6 +105,7 @@ def main(argv=None):
         # No filtrar archivos propietarios ni contenido de ROM en reportes.
         (out/"report.json").write_text(json.dumps(report, indent=2)+"\n", encoding="utf-8")
         zpath.unlink(missing_ok=True)
+        lcdzip.unlink(missing_ok=True)
     print(json.dumps(report, indent=2))
     return 0 if report["status"] == "PROCESS_EXIT_0_FUNCTIONAL_UNVERIFIED" else 4
 
