@@ -12,6 +12,9 @@ Arrancar, visualizar y editar texto en la ROM AlphaSmart Pro 2.1.2 utilizando **
 - Preparar auditor de ROM y HEX, construcción SUBTARGET reducida, runner DIAG, logs aislados, comandos de depuración y pruebas estáticas.
 - Entregar código versionado con procedencia, límites y un único plan de ejecución agrupada.
 
+## Investigación futura de memoria — archivada, NO bloqueante
+- [ASPRO-HW-A17](ASPRO_HW_A17_EXPANSION_256K_CONCEPT.md): expansión 128→256 KiB con A17 retenido en latch, a validar eléctricamente; queda aplazada hasta después de AP-02 y no implica un cambio del hardware ni del plan de emulación.
+
 ## AP-02 — ÚNICA INTERVENCIÓN DIRIGIDA EN T (por autorizar)
 - Verificar ruta del árbol canónico y variante instalada a partir de documentación; no explorar sin necesidad.
 - Compilar `asprodiag` reducido usando `SOURCES`, sin construir MAME completo y sin modificar fuente original.

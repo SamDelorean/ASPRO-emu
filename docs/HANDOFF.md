@@ -2,6 +2,8 @@
 
 **Directiva máxima actualizada:** primero ASPRO-DIAG independiente. La decisión de ampliar AS2K o mantener ASPRO separado se tomará solamente al finalizar la calificación funcional de DIAG. No modificar AS2K ni producir versión estable por adelantado.
 
+**Idea preservada para fase futura:** [A17 y SRAM 256 KiB](ASPRO_HW_A17_EXPANSION_256K_CONCEPT.md) — decodificador + registro externo, SIN validación eléctrica, NO condiciona ASPRO-DIAG.
+
 **Estado:** paquete estático de ASPRO-DIAG preparado, pendiente de compilación y prueba auténtica.
 
 Hallazgo clave: el MAME existente ya incluye la emulación Pro en el **mismo** driver AS2K `src/mame/skeleton/alphasma.cpp`. ROM privada SHA1 `c3c6a421c9ced92db97431d04b4a3f09a39de716`, RESET `$C000`, SP inicial `$00FF`. LCD KS0066 F05 de 4096 bytes recuperado en Drive, SHA1 `0196e871584ee5d370856e7307c0f9d1466e3e51`.
