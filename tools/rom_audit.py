@@ -96,11 +96,15 @@ def main(argv=None):
     p.add_argument("--rom", type=pathlib.Path)
     p.add_argument("--hex", dest="hex_file", type=pathlib.Path)
     p.add_argument("--json", action="store_true")
+    p.add_argument("--require-212", action="store_true", help="fail on identity/reset mismatch")
     args = p.parse_args(argv)
     if not args.rom and not args.hex_file:
         p.error("especifique --rom y/o --hex")
     try:
         report = {"rom": audit_rom(args.rom)} if args.rom else {}
+        if args.require_212 and (not args.rom or not report["rom"]["expected_212"]
+                or report["rom"]["reset"] != "C000" or not report["rom"]["reset_lds_00ff"]):
+            raise ValueError("ROM identity/reset is not verified Pro 2.1.2")
         if args.hex_file:
             report["hex"] = audit_hex(args.hex_file)
     except (ValueError, OSError, UnicodeError) as exc:

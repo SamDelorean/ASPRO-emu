@@ -12,21 +12,22 @@ Emulador reducido de AlphaSmart Pro basado en **MAME 0.289 y el driver existente
 - LCD externo: KS0066 F05 CGROM de 4096 bytes localizada en Drive, SHA1 `0196e871584ee5d370856e7307c0f9d1466e3e51` (necesaria para arranque fiel; privada).
 - Reutilización: MAME ya proporciona CPU MC68HC11D0, 2 × KS0066 (LCD 40×4), matriz de teclado 16 columnas, 128 KiB NVRAM y mapa Pro.
 - Archivo de origen recuperado: [SamDelorean/mame-as3k, `src/mame/skeleton/alphasma.cpp`](https://github.com/SamDelorean/mame-as3k/blob/c4e48388ca620472643110db2941ce70aa5f3c07/src/mame/skeleton/alphasma.cpp).
-- Estado: **implementación estática de runner, ROM audit y receta de subtarget**; ningún PASS dinámico reclamado.
+- Estado AP-02: **STATIC_PASS / COMPILE_PENDING / DYNAMIC_PENDING**. Preparación integral y pruebas sintéticas completas; ningún arranque HC11 ni PASS funcional reclamado. Véase [ejecución y resultados](docs/AP02_EXECUTION_AND_RESULTS.md).
 
 ## Uso (sin alterar el MAME canónico)
 
 ```bash
 python3 tools/rom_audit.py --rom /ruta/privada/alphasmartpro212.rom --json
-bash tools/build_diag.sh /ruta/al/workspace/ASPRO-MAME 2
-python3 tools/run_diag.py --rom /ruta/privada/alphasmartpro212.rom --lcd-rom /ruta/privada/ks0066_f05.bin --bin /ruta/al/arbol/MAME/asprodiag --seconds 8
+python3 tools/prepare_mame.py --source /ruta/verificada/referencia-Git-MAME
+bash tools/build_diag.sh build/mame 2
+python3 tools/run_diag.py --rom /ruta/privada/alphasmartpro212.rom --lcd-rom /ruta/privada/ks0066_f05.bin --bin build/mame/asprodiag --seconds 8 --capture auto
 python3 tools/static_selftest.py
 ```
 
-La construcción reducida requiere explícitamente un **árbol de construcción ASPRO independiente**, nunca el árbol AS2K. La construcción reducida usa `make SUBTARGET=asprodiag SOURCES=src/mame/skeleton/alphasma.cpp REGENIE=1` del propio MAME; evita volver a importar o modificar su código, y utiliza el mismo driver del que ya procede el AS2K. Solo crea resultados de compilación de subtarget. Para reducir aún más el binario a **un único sistema Pro**, se podrá aplicar `SOURCEFILTER` del MAME **solo después de comprobar su contrato**; no sustituir la primera ejecución por esa optimización.
+La construcción reducida requiere una exportación propia verificada en **ASPRO-emu/build/mame**, nunca el árbol AS2K. `prepare_mame.py` exporta el commit fijado desde objetos Git de una referencia local en sólo lectura, sin copiar sus cachés ni archivos privados; `build_diag.sh` rechaza destinos ajenos o sin identidad. No se descargan ni reinstalan toolchains. La construcción reducida usa `make SUBTARGET=asprodiag SOURCES=src/mame/skeleton/alphasma.cpp REGENIE=1` del propio MAME; evita volver a importar o modificar su código, y utiliza el mismo driver del que ya procede el AS2K. Solo crea resultados de compilación de subtarget. Para reducir aún más el binario a **un único sistema Pro**, se podrá aplicar `SOURCEFILTER` del MAME **solo después de comprobar su contrato**; no sustituir la primera ejecución por esa optimización.
 
 El runner prepara un `asmapro.zip` temporal con la ROM original, de uso local exclusivamente, y genera logs y estado en un directorio de diagnóstico separado. La ROM nunca se versiona, no se imprime y no se altera.
 
-**Los scripts NO llaman Commander ni ejecutan pruebas por sí mismos en este repositorio.** Su empleo en T640 requiere la autorización propia de cada intervención.
+**Los scripts no llaman Commander.** `tools/ap02_run_once.sh` agrupa preparación, compilación y ejecución auténtica cuando el usuario autorice la intervención T640 y estén disponibles sus insumos privados; invocarlo sí ejecuta DIAG. Véase la instrucción única en [AP-02](docs/AP02_EXECUTION_AND_RESULTS.md). Ningún log, ROM, NVRAM, estado o captura privada se debe publicar en Git.
 
 Véase [plan](docs/MASTER_PLAN.md), [mapa](docs/ROM_HARDWARE_MAP.md), [procedencia](docs/SOURCE_PROVENANCE.md) y [continuidad](docs/HANDOFF.md).

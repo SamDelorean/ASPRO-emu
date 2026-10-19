@@ -28,3 +28,23 @@ Hallazgo clave: el MAME existente ya incluye la emulación Pro en el **mismo** d
 - `py_compile tools/run_diag.py`: PASS; blob Git verificado `debef0a86e068916cf19f5f8e3ad421139b1b0d7`.
 - LCD KS0066 F05: 4096 bytes; SHA1 `0196e871584ee5d370856e7307c0f9d1466e3e51`, CRC32 `af9e7bd6` verificadas contra la fuente MAME.
 - **NO** se ha compilado `asprodiag`; NO se ha ejecutado MAME, ni pruebas de LCD/teclado. Ninguna afirmación de PASS funcional.
+
+## AP-02 Cloud — 2026-10-19 (estado vigente)
+
+Implementación estática integral entregada en `codex/ap02-aspro-diag-20261019`.
+Base inspeccionada `7ff52d3813202cbc32d3945b5d3a2310d94a9434`.
+**STATIC_PASS / COMPILE_PENDING / DYNAMIC_PENDING**; AP-02 funcional sigue abierto.
+
+Receta y exportación de fuentes fijadas aisladas, job autónomo `tools/ap02_run_once.sh`,
+runner con limpieza integral/timeout/límites, manifestación de identidad binaria,
+sondas HC11 acotadas y observación de pantalla/tecla usando Lua existente.
+La pantalla y la respuesta a teclado no se dan por probadas: las pruebas locales
+son seis casos sintéticos AP-02 más el autocontrol AP-01, sintaxis shell/Python y
+comprobación de diff, todos PASS. No se compiló ni ejecutó MAME en Cloud; no hay
+remotes rclone configurados aquí, faltan árbol propio y dependencias gráficas.
+No se transfirió ROM a Cloud ni se ejecutó Commander.
+
+Único siguiente paso: intervención T640 expresamente autorizada con la invocación
+agrupada y límites descritos en [AP02_EXECUTION_AND_RESULTS.md](AP02_EXECUTION_AND_RESULTS.md).
+AS2K anfitrión quedó intacto en SHA `9cc0bd98aeb21e2ea77de878a8833a1047c88169`.
+No hay PR, ASPRO-STABLE ni decisión de integración anticipada.

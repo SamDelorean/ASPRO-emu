@@ -11,3 +11,14 @@ Fuentes AS2K/Vontar: documentación en `SamDelorean/AS2K-Emulator`; el repositor
 Documentación de compilación oficial MAME 0.289: `SUBTARGET` + `SOURCES` + `REGENIE=1` para un target limitado.
 
 Los scripts del repositorio son propios; no se incluyen ROM, datos particulares ni código derivado de firmware propietario.
+
+## Actualización AP-02 — 2026-10-19
+
+La nota histórica que describía AS2K-Emulator como repositorio sólo documental ya
+no describe el checkout anfitrión actual: `/workspace/AS2K-Emulator` contiene su
+driver Stable, HEAD `9cc0bd98aeb21e2ea77de878a8833a1047c88169`. Es exclusivamente
+referencia de lectura. No se usa como directorio de construcción ni se modifica.
+El driver Pro se obtiene del commit MAME ya fijado arriba, que contiene asmapro,
+y se compila desde la exportación independiente `ASPRO-emu/build/mame`.
+Los hashes, interfaces concretas del depurador/Lua revisadas y límites de evidencia
+están en `AP02_EXECUTION_AND_RESULTS.md`. No se importó otra CPU, LCD o firmware.

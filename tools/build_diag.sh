@@ -1,31 +1,38 @@
 #!/usr/bin/env bash
-# Construcción reducida MAME en workspace ASPRO EXCLUSIVO, AS2K sólo referencia de código; NO compilar en AS2K.
+# Only this ASPRO checkout's owned build tree may receive make outputs.
 set -euo pipefail
-MAME_ROOT="${1:-${ASPRO_MAME_ROOT:-}}"
-if [[ -z "$MAME_ROOT" ]]; then
-  echo "BLOCKED: indicar árbol MAME de construcción ASPRO independiente como arg1 o ASPRO_MAME_ROOT; AS2K es sólo referencia" >&2
-  exit 2
-fi
-MAME_ROOT="$(realpath -m "$MAME_ROOT")"
-case "${MAME_ROOT,,}" in
-  *mame-as2k*|*as2k-stable*|*as2k-diag*)
-    echo "BLOCKED: nunca compilar dentro de AS2K; árbol prohibido: $MAME_ROOT" >&2
-    exit 2;;
-esac
-JOBS="${2:-2}"
-if [[ ! -d "$MAME_ROOT" || ! -f "$MAME_ROOT/makefile" ]]; then
-  echo "BLOCKED: falta árbol canónico MAME: $MAME_ROOT" >&2; exit 2
-fi
-if ! grep -q 'ROM_START( asmapro )' "$MAME_ROOT/src/mame/skeleton/alphasma.cpp"; then
-  echo "BLOCKED: fuente MAME no contiene asmapro, no inventar driver" >&2; exit 3
-fi
-if [[ ! "$JOBS" =~ ^[1-9][0-9]*$ ]]; then echo "JOBS inválido" >&2; exit 2; fi
-echo "ASPRO-DIAG: MAME reducido existente, fuente alphasma.cpp, jobs=$JOBS"
-echo "Source SHA256: $(sha256sum "$MAME_ROOT/src/mame/skeleton/alphasma.cpp" | cut -d' ' -f1)"
-make -C "$MAME_ROOT" -j"$JOBS" TARGET=mame SUBTARGET=asprodiag \
-  SOURCES=src/mame/skeleton/alphasma.cpp REGENIE=1 TOOLS=0
-if [[ ! -x "$MAME_ROOT/asprodiag" ]]; then
-  echo "BLOCKED: subtarget compilado no localizado en $MAME_ROOT/asprodiag" >&2; exit 4
-fi
-echo "ASPRO-DIAG BIN SHA256: $(sha256sum "$MAME_ROOT/asprodiag" | cut -d' ' -f1)"
-echo "COMPILED_ONLY: sin calificación funcional"
+ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
+MAME_ROOT=${1:-${ASPRO_MAME_ROOT:-"$ROOT/build/mame"}}
+JOBS=${2:-2}
+[[ "$JOBS" =~ ^[1-9][0-9]*$ ]] || { echo 'BLOCKED: JOBS must be positive' >&2; exit 2; }
+python3 "$ROOT/tools/prepare_mame.py" --check --dest "$MAME_ROOT"
+MAME_ROOT=$(realpath -e -- "$MAME_ROOT")
+for tool in make g++ pkg-config; do
+    command -v "$tool" >/dev/null || { echo "COMPILE_PENDING: missing $tool" >&2; exit 2; }
+done
+pkg-config --exists sdl2 SDL2_ttf fontconfig || {
+    echo 'COMPILE_PENDING: missing MAME SDL2/SDL2_ttf/fontconfig development packages' >&2; exit 2;
+}
+printf '%s\n' 'ASPRO-DIAG reduced build; no changes to reference source'
+# Never use symlinked/hardlinked AS2K caches. This export has its own build/.
+CCACHE_DIR="$MAME_ROOT/build/ccache" CCACHE_LOGFILE=/dev/null CCACHE_DISABLE=1 MAKEFLAGS= make -C "$MAME_ROOT" -j"$JOBS" TARGET=mame SUBTARGET=asprodiag \
+    SOURCES=src/mame/skeleton/alphasma.cpp REGENIE=1 TOOLS=0 USE_QTDEBUG=0
+[[ -x "$MAME_ROOT/asprodiag" && ! -L "$MAME_ROOT/asprodiag" ]] || {
+    echo 'COMPILE_PENDING: asprodiag output missing/aliased' >&2; exit 4;
+}
+python3 - "$MAME_ROOT" "$ROOT" <<'PYCODE'
+import hashlib,json,pathlib,subprocess,sys
+root=pathlib.Path(sys.argv[1]); product=pathlib.Path(sys.argv[2])
+binary=root/'asprodiag'
+with binary.open('rb') as f:
+    if f.read(4)!=b'\x7fELF': raise SystemExit('BLOCKED: asprodiag is not a native ELF executable')
+h=hashlib.sha256()
+with binary.open('rb') as f:
+    for data in iter(lambda:f.read(1024*1024),b''): h.update(data)
+info=json.loads((root/'.aspro-source.json').read_text())
+info.update(binary_sha256=h.hexdigest(),target='mame',subtarget='asprodiag',
+            product_sha=subprocess.check_output(['git','-C',str(product),'rev-parse','HEAD'],text=True).strip())
+(root/'.aspro-binary.json').write_text(json.dumps(info,indent=2)+'\n')
+print('ASPRO-DIAG binary SHA256: '+h.hexdigest())
+PYCODE
+echo 'COMPILED_ONLY: functional execution still required'
