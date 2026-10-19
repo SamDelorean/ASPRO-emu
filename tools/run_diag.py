@@ -72,14 +72,14 @@ def main(argv=None):
     # 8000: lectura KB/selección alta; C000: escritura selección baja.
     # No alterar memoria, ROM ni puertos.
     debugscript.write_text(
-        'temp0 = 0\\n'
-        'temp1 = 0\\n'
-        'temp2 = 0\\n'
-        'bp C000,1,{ logerror "ASPRO_RESET_C000" ; g }\\n'
-        'wpset 8000,1,r,temp0<12,{ temp0++ ; logerror "ASPRO_KB_READ" ; g }\\n'
-        'wpset 8000,1,w,temp1<12,{ temp1++ ; logerror "ASPRO_KB_HIGH_W" ; g }\\n'
-        'wpset C000,1,w,temp2<12,{ temp2++ ; logerror "ASPRO_KB_LOW_W" ; g }\\n'
-        'g\\n', encoding="utf-8"
+        'temp0 = 0\n'
+        'temp1 = 0\n'
+        'temp2 = 0\n'
+        'bp C000,1,{ logerror "ASPRO_RESET_C000" ; g }\n'
+        'wpset 8000,1,r,temp0<12,{ temp0++ ; logerror "ASPRO_KB_READ" ; g }\n'
+        'wpset 8000,1,w,temp1<12,{ temp1++ ; logerror "ASPRO_KB_HIGH_W" ; g }\n'
+        'wpset C000,1,w,temp2<12,{ temp2++ ; logerror "ASPRO_KB_LOW_W" ; g }\n'
+        'g\n', encoding="utf-8"
     )
     cmd = [
         str(binary), "asmapro", "-rompath", str(rom_dir),
