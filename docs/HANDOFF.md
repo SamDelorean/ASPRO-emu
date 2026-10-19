@@ -61,3 +61,11 @@ La infraestructura canónica de T640 incluye MAME 0.289, `as2kdiag`, rclone `goo
 Se añadió `tools/adopt_engine.py`, que **sólo consulta** `-listxml asmapro` en el ejecutable `as2kdiag` ya existente y exige la ROM Pro exacta por SHA-1. Si la máquina está incluida, realiza copia **independiente** del binario en `ASPRO-emu/build/prebuilt/asprodiag` y registra hashes/procedencia. Nunca ejecuta Pro usando `as2kdiag`, no escribe en AS2K y no declara PASS por copiar un ejecutable. Si `asmapro` falta, `tools/ap02_run_once.sh` cae automáticamente a la compilación ASPRO reducida de AP-02 en un directorio independiente.
 
 No repetir pruebas HC11, LCD ni teclado ya cerradas en AS2K: la única prueba nueva consiste en el firmware y el mapa de plataforma Pro (RESET, teclado, LCD, SRAM). Esta optimización **no ha sido ejecutada ni validada en T**. Toda intervención Commander debe contar con autorización concreta y preservar su máximo de llamadas.
+
+## AP-02 — intento remoto 2026-10-19, sin ejecución
+
+Se solicitó una única intervención dirigida a la T640 canónica mediante Commander, deviceId `dee0b4b6-578a-41a5-88de-73dbeb808983`. **El servidor remoto la rechazó antes de despachar**: `No Desktop Commander device is currently online`; T640, última conexión informada hace 6 h. Por tanto **NINGÚN comando llegó a ejecutarse en T**, no hubo checkout, compilación ni ensayo MAME; ningún resultado funcional. Se contabiliza conservadoramente **una llamada Commander rechazada** dentro de la intervención. No se hicieron ping, sondeo, reconexión, exploración ni nuevos intentos.
+
+Rama ASPRO contiene el fast path `tools/adopt_engine.py` + `ap02_run_once.sh`: primero comprobar `-listxml asmapro` sobre DIAG existente y adoptar una copia independiente; si falla, compilar desde exportación aislada. Se publican **sólo reportes derivados** en el outbox Drive. Este código es nuevo, pendiente de ejecución real y por eso no puede marcarse PASS.
+
+**Para retomar:** cuando se restaure el servicio Remote Desktop Commander de T640, ejecutar **una sola vez** la intervención agrupada preparada, con el dispositivo canónico, sin repetir inventarios ni chequeos cerrados. La máquina desconectada es la única causa observada del bloqueo en este intento; no atribuirlo a SDL, rclone, MAME ni a problemas de acceso Git.
