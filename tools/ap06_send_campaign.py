@@ -97,6 +97,7 @@ def perform(rom:Path,lcd:Path,binary:Path):
         for tag in ["LUA_ATTACHED","KEY_a_DOWN","KEY_b_DOWN","KEY_c_DOWN",
                     "PC_ATTACHED","KEY_send_DOWN","SEND_KEY_RELEASED",
                     "SEND_SECOND_TRIGGER","SECOND_SEND_KEY_RELEASED",
+                    "PC_PORT_READBACK_CONNECTED_1",
                     "PC_DETACHED","PC_PORT_READBACK_0","OBSERVATION_COMPLETE","OBSERVATION_FAILED"]:
             report[tag]="ASPRO_AP06_"+tag+"\n" in obs
         for image in ["ready","typed_abc","host_attached","after_send","after_disconnect"]:
@@ -124,6 +125,7 @@ def perform(rom:Path,lcd:Path,binary:Path):
             if report.get("exit_code")==0 and report["OBSERVATION_COMPLETE"]
             and not report["OBSERVATION_FAILED"] and report["PC_ATTACHED"]
             and report["KEY_send_DOWN"] and report["SEND_SECOND_TRIGGER"]
+            and report["PC_PORT_READBACK_CONNECTED_1"]
             and report["PC_DETACHED"] and report["PC_PORT_READBACK_0"]
             and report["text_is_exact"]
             and report["session_begin_seen"] and report["session_end_seen"]
