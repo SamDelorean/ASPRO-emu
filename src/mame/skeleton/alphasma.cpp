@@ -100,6 +100,7 @@ public:
     aspro_send_state(const machine_config &mconfig, device_type type, const char *tag)
         : alphasmart_state(mconfig, type, tag), m_pc_connected(*this, "PC_CONNECTED") {}
     void aspro_send(machine_config &config);
+    DECLARE_INPUT_CHANGED_MEMBER(pc_connected_changed);
 protected:
     virtual void machine_reset() override;
 private:
@@ -179,6 +180,13 @@ void aspro_send_state::machine_reset()
     pc_keyboard_reset();
     send_sink_end();
     m_pc_session_connected = false;
+}
+
+INPUT_CHANGED_MEMBER(aspro_send_state::pc_connected_changed)
+{
+    // Connected-host transitions own the TXT lifetime, even while the ROM
+    // is idle and makes no further PA/PD accesses. Same event hook as AS2K.
+    sync_pc_session();
 }
 
 void aspro_send_state::sync_pc_session()
@@ -932,7 +940,7 @@ INPUT_PORTS_END
 static INPUT_PORTS_START( aspro_send )
     PORT_INCLUDE( alphasmart )
     PORT_START("PC_CONNECTED")
-    PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("ASPRO PC Connected (Pause)") PORT_CODE(KEYCODE_PAUSE) PORT_TOGGLE
+    PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("ASPRO PC Connected (Pause)") PORT_CODE(KEYCODE_PAUSE) PORT_TOGGLE PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(aspro_send_state::pc_connected_changed), 0)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( asma2k )
