@@ -54,6 +54,10 @@ local function tick()
         attached:set_value(1)
         log("PC_ATTACHED")
     end
+    if frame==665 then
+        local ok,value=pcall(function() return ports[":PC_CONNECTED"]:read() end)
+        if ok then log("PC_PORT_READBACK_CONNECTED_"..tostring(value & 0x01)) end
+    end
     if frame==880 then snapshot("host_attached") end
     if frame==1020 then press("send") end
     if frame==1036 then release(); log("SEND_KEY_RELEASED") end
@@ -61,8 +65,8 @@ local function tick()
     if frame==1376 then release(); log("SECOND_SEND_KEY_RELEASED") end
     if frame==1450 then snapshot("after_send") end
     if frame==1550 then
-        -- PC_CONNECTED is a PORT_TOGGLE field: explicitly force LOW rather
-        -- than clear the Lua override and inherit a potentially latched state.
+        -- Host state is direct HIGH/LOW: no PORT_TOGGLE, no keystroke.
+        -- The firmware must receive the connection-edge IRQ without keyboard input.
         attached:set_value(0)
         log("PC_DETACHED")
     end
