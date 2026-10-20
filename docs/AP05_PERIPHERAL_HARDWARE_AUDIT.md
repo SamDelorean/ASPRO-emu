@@ -44,7 +44,7 @@ ROM privada de **32768 bytes**; SHA-256 `286000f3ffdd4802b4b1446032e108300c1fd6d
 
 Estas cadenas corroboran funciones de firmware **presentes**, no demuestran que el dispositivo externo esté emulado ni señalan directamente las rutinas/los pines físicos. Buscar cadenas `IR` no sustituye un análisis del código: la clasificación IR se fundamenta en manual y driver.
 
-**Compatibilidad Get Utility:** las versiones de guía no son uniformes. Guía posterior de Windows menciona Pro 2.09 o ≥2.1.3, excluyendo expresamente **2.1/2.1.2**. Por ello verificar exactitud para ROM 2.1.2 antes de prometer recepción desde PC. La transferencia **saliente** mediante `Send` está documentada. No atribuir a ROM 2.1.2 funcionalidades genéricas de firmware posterior sin observarlas.
+**Compatibilidad Get Utility según plataforma:** la [guía de Get Utility para Mac](https://www.manualslib.com/manual/207841/Alphasmart-As-Pro.html) documenta Pro con ROM **v2.05 o posterior** para selección remota de archivo, por lo que **2.1.2 entra en ese criterio para Mac**. La [guía posterior de Get Utility para Windows](https://manualzz.com/doc/1619937/alphasmart-alphasmart-3000--alphasmart-2000--alphasmart-p...) indica Pro 2.09 o ≥2.1.3 y excluye expresamente **2.1 y 2.1.2**. Son compatibilidades de utilidades y versiones diferentes, no afirmaciones universales de hardware. Verificar el protocolo efectivo de la ROM 2.1.2 por ADB/PS2; no prometer recepción Windows. La transferencia **saliente** mediante `Send` está documentada.
 
 ## Auditoría de driver MAME existente
 
