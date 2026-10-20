@@ -97,3 +97,23 @@ Evidencias del cierre incompleto: [primer `abcabc`](https://drive.google.com/fil
 4. No aceptar como prueba de activación del firmware un mero `STATUS PC connected` del menú GTK: es sólo UI. Verificar que el sistema no añade caracteres fantasma y que no deja IRQ permanentemente activo.
 
 **AS2K**: no se alteró ningún archivo, binario o working tree. El defecto existe como **incidencia pendiente de corrección independiente bajo autorización**; arreglo mínimo propuesto en la rama apropiada del AS2K estable: emitir una notificación IRQ **sólo cuando cambie realmente `m_ui_pc_connected`** dentro de `PC ON/OFF` (y revisar además la alternativa Pause/Break), probar inmediatamente ambas transiciones tanto por menú como por combinación de teclas, sin rehacer `Send`, decodificador, UI ni emulador. Evitar doble IRQ o modificación de estado de teclado al recibir comandos repetidos.
+
+## AP-06 — cierre dinámico canónico de PC → TXT (20-oct-2026)
+
+**Estado vigente, prevalece sobre los apartados anteriores:** `SEND_TXT_DYNAMIC_PASS` / `PC_ATTACH_DETACH_AND_EDITOR_RETURN_VISUAL_PASS`. Esta es una prueba **ASPRO-DIAG** exclusiva; no significa que el defecto equivalente de AS2K esté corregido ni que existan ya UI estable/ADB.
+
+**Corrida final:** `ASPRO_AP06_send-aw15n_0s`, producto ejecutado `e06efaeab1d5fecd44407319d21c267cc8d53824`, binario aislado `asprodiag` SHA256 `ad6646b38c0c6353622d992e0263828c806161ec234b11d31a82a7ba4e7ed8ea`. Se compiló incrementalmente con `-j3` en `ASPRO-emu/build/send-mame`; **AS2K fuente/binaries inalterados**. [Launcher auténtico](https://drive.google.com/file/d/1RUOdSYQdsMCl4RxdAV40P2gQ22cz7iAm/view): `AP06_INCREMENTAL_BUILD_PASS`, `AP06_TEST_ONLY_EXIT=0`, `ASPRO_AP06_HOSTEDGE_EXIT=0`.
+
+**Evidencia automatizada exacta:** [reporte JSON](https://drive.google.com/file/d/1Z6DWa_bKTZ3pqF3UeozzTRDsobwJ9VCa/view) y [marcadores](https://drive.google.com/file/d/1LQwM7X2zH8oyVv22kTrsoXR4c00VelRH/view).
+- ROM privada Pro 2.1.2 SHA256 `286000f3ffdd4802b4b1446032e108300c1fd6df7386c731b36dba00aef2d99e`.
+- `PC_ATTACHED=true`, `PC_PORT_READBACK_CONNECTED_1=true`, `session_begin_seen=true`, `session_open_count=1`.
+- Dos `KEY_send_DOWN`, segundo `SEND_SECOND_TRIGGER=true`, `SEND_SECOND_TRIGGER` **no crea otra sesión**.
+- `actual_txt_preview="abcabc"`, `actual_txt_bytes=6`, `actual_txt_sha256=bbb59da3af939f7af5f360f2ceb80a496e3bae1cd87dde426db0ae40677e1c2c`, `text_is_exact=true`, recibido por **tramas físicas PD0/PD1 → Set2 → Unicode UTF8**.
+- `PC_DETACHED=true`, `PC_PORT_READBACK_0=true`, `session_end_seen=true`, `session_close_count=1`, `physical_decoder_finished=true`.
+- `OBSERVATION_COMPLETE=true`, `OBSERVATION_FAILED=false`, `exit_code=0`, `functional_pass=true`, limpieza de ROM privada temporal `COMPLETE`.
+- **Archivo TXT real privado**: [ASPRO_AP06_send-aw15n_0s.send.txt](https://drive.google.com/file/d/1avEsthOVI9ByCmvWzM4fO7FKsLs-9prL/view), 6 bytes exactamente `abcabc`, no archivo reconstruido desde pantalla ni leído de SRAM.
+- **Evidencia visual adicional inspeccionada:** [antes de conectar, editor con abc](https://drive.google.com/file/d/1uPVQ2CwooCqgA1pIgZbsX18sW7krrwgx/view), [conectado, «Attached to PC, emulating keyboard. Press Send key to transfer file 1.»](https://drive.google.com/file/d/18kDgV0rbJSysQhyONc-21rfs0IzrD1a8/view), [tras desconectar, regreso al editor con abc](https://drive.google.com/file/d/13_pnNYSP2ILkHYTvay3dZk6NuIlRCBoQ/view). El guion NO presiona teclas adicionales entre desconectar y el último snapshot. La evidencia abarca tanto cierre de host como reanudación del editor.
+
+**Causa y correcciones:** el control `PORT_TOGGLE` dejaba el puerto PC artificialmente HIGH tras pedir desconexión; se pasó a control explícito HIGH/LOW. Además, conforme al fallo de AS2K observado por el usuario, la transición del estado físico del host emite **un IRQ de despertar por borde** sin simular pulsaciones de teclado. El callback y sondeo 10 ms garantizan que la captura no dependa de que el firmware vuelva a consultar PA/PD. **Sólo quedó validado este comportamiento de ASPRO-DIAG**; la ausencia de IRQ en `ui_process_command PC ON/OFF` de AS2K es incidencia independiente, no solucionada por estos commits.
+
+**Continuidad:** AP-02 a AP-06 cumplen el alcance probado (arranque/editor, F1–F8+NVRAM, texto emitido por PC con capturas delimitadas por conexión). No repetir esta campaña por rutina; no construir ASPRO-STABLE, alterar AS2K ni integrar ADB sin instrucción expresa del usuario. Para atender el defecto AS2K ya identificado, preparar ajuste mínimo en su flujo autorizado y prueba dirigida de conexión/desconexión por menú y atajo; no trasladar código sin comprobar diferencias de generación.
