@@ -85,3 +85,9 @@ La primera campaña corta capturó `Opening File N....` y no se promovió a PASS
 **Evidencia consolidada:** [AP04_FILES_NVRAM_FUNCTIONAL_EVIDENCE.md](AP04_FILES_NVRAM_FUNCTIONAL_EVIDENCE.md). [Informe privado Drive](https://drive.google.com/file/d/1ELvKLvj9O8TQPlb5I0G_efdQwUJbnj8b/view) y [carpeta de 24 capturas](https://drive.google.com/drive/folders/1q52Cx-DFixfmGrPJ9DIRGma4Q79yGHX1).
 
 **Alcance:** PASS de estas rutas emuladas, no certificación de toda la ROM, electrónica o hardware de batería. No repetir F1–F8 ni SRAM sin falla nueva. **Próxima decisión corresponde exclusivamente al usuario:** ASPRO-DIAG separado versus integración con AS2K; no implementar ASPRO-STABLE ni tocar AS2K antes de decidir.
+
+## AP-05 — auditoría de periféricos terminada (2026-10-20)
+
+La revisión del usuario detectó que AP-04 cerró solamente arranque/editor/F1–F8/NVRAM; **no cerró periféricos externos del AlphaSmart Pro**. [Documento canónico AP-05](AP05_PERIPHERAL_HARDWARE_AUDIT.md), con manuales, inventario de 17 hojas y fotos reales, ROM 2.1.2 y driver MAME fijado. **Pro stock: PC teclado AT/PS2 y Mac/IIGS ADB confirmados; ROM contiene mensajes de modo conectado y Send, pero el driver ASPRO-DIAG aún no implementa endpoints host ADB/PS2.** No hay IR/USB/impresora directa documentados para Pro; IR opcional es de AS2K/AS3K. Batería CR2032, fuente DC, NiCad y estado LOW presentes, con modelado lógico limitado. PD0/PD1 son sólo candidatos de conexión (no continuidad medida); no dar por libre ningún pin.
+
+**Próxima etapa**: localizar estáticamente las rutinas de interfaz PC/Mac en la **ROM exacta 2.1.2**, adaptar en ASPRO exclusivamente endpoints emulados y hacer una sola campaña de Send y modo teclado hacia host; reutilizar AS2K como referencia únicamente. No repetir tests AP-02/03/04 ni adelantar decisión ASPRO-STABLE/integración. **Cero llamadas Commander en esta auditoría; sin PASS dinámico de puertos.**
