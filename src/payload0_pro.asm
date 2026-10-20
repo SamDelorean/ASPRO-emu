@@ -5,6 +5,7 @@ PORTA       EQU $0000
 PORTD       EQU $0008
 DDRD        EQU $0009
 HPRIO       EQU $003C
+PACTL       EQU $0026
 LCDMODE     EQU $8000
 
         ORG $0040
@@ -12,6 +13,8 @@ PAYLOAD0_ENTRY:
         SEI
         LDS #$00E0
         BSET HPRIO,#$20
+        ; D0 reset configures PA7 as input. Enable DDR PA7 via PACTL.
+        BSET PACTL,#$80
         ; Preserve unrelated PORTA bits, force LCD0 strobe low.
         BCLR PORTA,#$80
         ; PD5..PD2 output, PD1..PD0 remain SCI.
