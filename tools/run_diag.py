@@ -88,7 +88,7 @@ def command(binary,out,rom_dir,seconds,video,prefix):
         '-input_directory',str(out/'input'),'-snapshot_directory',str(out/'snap'),
         '-diff_directory',str(out/'diff'),'-homepath',str(out/'home'),
         '-debug','-debugger','none','-debugscript',str(out/'aspro_reset.cmd'),
-        '-autoboot_delay','0','-autoboot_script',str(ROOT/'tools/ap02_observe.lua'),
+        '-autoboot_delay','0','-autoboot_script',str(ROOT/('tools/ap03_startup_observe.lua' if seconds>=20 else 'tools/ap02_observe.lua')),
         '-log','-video',video,'-window','-sound','none','-nothrottle',
         '-skip_gameinfo','-seconds_to_run',str(seconds)]
 
