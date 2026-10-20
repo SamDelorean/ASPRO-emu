@@ -148,7 +148,7 @@ def run_session(rom,lcd_rom,binary,out_root,seconds=8,capture='auto'):
             with zipfile.ZipFile(rom_dir/'ks0066.zip') as z:
                 if hashlib.sha1(z.read('ks0066_f05.bin')).hexdigest()!=KS0066_F05_SHA1:
                     raise ValueError('LCD ROM changed during staging')
-            env=os.environ.copy();env['ASPRO_CAPTURE']='1' if video=='soft' else '0'
+            env=os.environ.copy();env['ASPRO_CAPTURE']='0' if capture=='none' else '1'
             with (out/'stdout.log').open('wb') as stdout,(out/'stderr.log').open('wb') as stderr:
                 process=subprocess.Popen(command(binary,out,rom_dir,seconds,video,prefix),cwd=out,
                     env=env,stdout=stdout,stderr=stderr,start_new_session=True,preexec_fn=limit_logs)
@@ -170,7 +170,7 @@ def run_session(rom,lcd_rom,binary,out_root,seconds=8,capture='auto'):
         report['input_cleanup']='COMPLETE' if not list(out.glob('roms-*')) else 'FAILED'
         if report['status']=='PROCESS_EXIT_0_FUNCTIONAL_UNVERIFIED' and (
             report['evidence']['observation_complete']!='OBSERVED' or
-            report['evidence']['RESET_ENTRY']!='OBSERVED' or
+            report['evidence']['AFTER_LDS']!='OBSERVED' or
             report['evidence']['debugger_errors']=='DETECTED'):
             report['status']='INSTRUMENTATION_INCOMPLETE'
         (out/'report.json').write_text(json.dumps(report,indent=2)+'\n')
