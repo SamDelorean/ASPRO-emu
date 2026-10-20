@@ -31,6 +31,10 @@ Arrancar, visualizar y editar texto en la ROM AlphaSmart Pro 2.1.2 utilizando **
 - Calificar carga de archivos, editor y persistencia mediante ASPRO-DIAG.
 - Tras demostrar funcionalidad en ASPRO-DIAG, comparar coste real y mantenimiento de las dos opciones. **No construir ni publicar ASPRO-STABLE ni ampliar AS2K antes de la decisión expresa del usuario.**
 
+## AP-05 — AUDITORÍA DE PERIFÉRICOS POST AP-04 (vigente)
+
+AP-03 (arranque/LCD/tecla A) y AP-04 (F1–F8/persistencia emulada) obtuvieron PASS visual de alcance; **la decisión de integrar o separar ASPRO todavía no procede como cierre total de hardware** hasta revisar periféricos. [Auditoría AP-05](AP05_PERIPHERAL_HARDWARE_AUDIT.md): Pro comercial incorpora interfaz PC AT/PS2 y Mac ADB; están ausentes del emulador actual como host externo, aunque ROM 2.1.2 sí contiene modos attached y Send. No existe evidencia de IR stock Pro; módulo IrDA opcional corresponde AS2K/AS3K. DC, AA/NiCad, CR2032 y low-battery requieren sólo modelado útil, no simulación eléctrica completa. Prioridad: estudio estático ROM 2.1.2 y adaptación mínima de los endpoints externos de envío de texto; **sin reabrir el núcleo HC11/LCD/F1–F8 ni modificar AS2K**. No construir stable ni elegir arquitectura sin decisión expresa.
+
 ## Sin burocracia
 No subdividir en PRE-01 / GATE-X / REQUALIFY a menos que un fallo real documentado lo exija. Reutilizar SHA, fuentes y resultados; no repetir PASS existentes. 3 llamadas Commander por intervención aprobada, máximo, sin polling.
 
