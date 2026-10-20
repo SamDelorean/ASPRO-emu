@@ -16,7 +16,7 @@ import zipfile
 
 from run_diag import ROOT, command, debugger_script, validate_inputs, sha
 
-SECONDS = 35
+SECONDS = 116
 OBSERVER = ROOT / "tools/ap04_files_observe.lua"
 
 def hash_tree(where):
@@ -45,7 +45,7 @@ def one_phase(binary, stage, base, shared_nvram, phase):
             proc = subprocess.Popen(cmd, cwd=run, env=env, stdout=stdout, stderr=stderr,
                                     start_new_session=True, preexec_fn=limit)
             try:
-                status["exit_code"] = proc.wait(timeout=240)
+                status["exit_code"] = proc.wait(timeout=440)
             except subprocess.TimeoutExpired:
                 status["reason"] = "PROCESS_TIMEOUT"
     finally:
