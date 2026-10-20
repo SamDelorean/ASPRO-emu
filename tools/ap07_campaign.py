@@ -46,6 +46,8 @@ def launch(exe,rom,lcd,payload,hold,mode):
         err=(out/"error.log").read_text(errors="replace") if (out/"error.log").exists() else ""
         rep["cpu_hold_observed"]="AP07_PC_HOLD\n" in obs
         rep["observer_complete"]="AP07_OBSERVATION_COMPLETE\n" in obs
+        rep["normal_key_a_down"]="AP07_NORMAL_KEY_A_DOWN\n" in obs
+        rep["normal_key_a_up"]="AP07_NORMAL_KEY_A_UP\n" in obs
         rep["post_sci_injection_seen"]="ASPRO_AP07_POST_SCI_BOOTSTRAP_INJECTION" in err
         shot=out/"snap/bootstrap.png"
         rep["snapshot_sha256"]=sha(shot) if shot.exists() else None
