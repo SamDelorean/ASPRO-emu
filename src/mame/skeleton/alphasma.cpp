@@ -956,7 +956,7 @@ INPUT_PORTS_END
 static INPUT_PORTS_START( aspro_send )
     PORT_INCLUDE( alphasmart )
     PORT_START("PC_CONNECTED")
-    PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("ASPRO PC Connected (Pause)") PORT_CODE(KEYCODE_PAUSE) PORT_TOGGLE PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(aspro_send_state::pc_connected_changed), 0)
+    PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("ASPRO PC Connected (external state)") PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(aspro_send_state::pc_connected_changed), 0)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( asma2k )
