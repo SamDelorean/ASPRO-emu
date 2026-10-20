@@ -216,7 +216,7 @@ void aspro_send_state::machine_reset()
         if (file.read(image.data(), size_t(file_size)) != size_t(file_size))
             fatalerror("AP07 BOOTSTRAP truncated payload read");
         d0.diag_bootstrap_load(image.data(), uint16_t(file_size), 0x0040);
-        logerror("ASPRO_AP07_POST_SCI_BOOTSTRAP_INJECTION size=%u pc=0040 hprio=%02X\\n",
+        logerror("ASPRO_AP07_POST_SCI_BOOTSTRAP_INJECTION size=%u pc=0040 hprio=%02X\n",
             unsigned(file_size), unsigned(d0.hprio()));
     }
 }
