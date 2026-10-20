@@ -62,3 +62,7 @@ Si el Pro usa otra codificación, líneas, host sense o tiempo que AS2K, adaptar
 - ADB/Mac, IR, USB, impresora, ASCii/OCR desde la pantalla; no prometidos en AP-06.
 - Interfaz GTK propia de ASPRO: la petición de un `.txt` se satisface primero con salida automática privada real, sin construir estable ni cambiar decisión de producto.
 - Emulador AS2K y Runtime AS2K: sólo lecturas de referencia, nunca escrituras.
+
+## Enmienda autorizada: límites de sesión por conexión PC
+
+**Regla explícita del usuario:** **conectar PC abre una sesión y desconectar PC la cierra**. Ninguna pulsación Send debe abrir otra captura ni cerrarla. La clase ASPRO `aspro_send_state` ahora detecta los cambios de `PC_CONNECTED` durante el sondeo PA/PD, ejecuta `send_sink_begin` al conectar y `send_sink_end` al desconectar, y sólo procesa bytes físicos durante la sesión. Dos pulsaciones Send consecutivas sobre un único archivo que contiene `abc` deben generar **un único `send.txt` con `abcabc`**, no dos archivos ni un fichero sustituido. Se exigen los marcadores de comienzo/fin, exactamente una apertura/cierre, y la coincidencia literal de seis bytes. `machine_stop` conserva únicamente un cierre de seguridad si hay una desconexión abrupta; no es el contrato normal. Esta enmienda se validará con el firmware Pro, no se asume PASS sin prueba.
