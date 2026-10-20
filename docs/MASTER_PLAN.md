@@ -52,3 +52,47 @@ AP-01 implementado estáticamente como scripts y documentación. **Sin compilaci
 **Fuentes y contrato verificable:** [AP07_MC68HC11D0P_BOOTSTRAP.md](AP07_MC68HC11D0P_BOOTSTRAP.md), hojas de datos Motorola/NXP y AN1060 revisados. Ya hay validador `tools/ap07_d0_bootstrap_contract.py` y regresión estática `tools/ap07_static_selftest.py`, **sin reivindicar ejecución de bootstrap**. El CPU MAME base deja la SCI mayoritariamente sin implementar; el parche D0 en AS2K es un modelo diagnóstico de estado *posterior* a la descarga, útil como donante técnico pero **no prueba de sincronización/eco SCI**.
 
 **Siguiente trabajo coherente:** implementar en ASPRO-DIAG propio la entrada opt-in especial, lógica SCI acorde al bootloader, límite de RAM/eco/finalización, reuso acotado de D0 HPRIO/PC, y ejecutar una única campaña sintética con ROM privada sólo en `asprodiag`. Preservar intactos arranque stock, PC Send/TXT y NVRAM. No reconstruir AS2K, ASPRO-STABLE ni repetir AP-02–AP-06. T640 `-j3`, Commander sólo bajo intervención autorizada y pruebas con evidencias en Drive.
+
+
+## AP-07 — Integración de bootstrap equivalente al método AS2K (20-oct-2026)
+
+**Directriz del usuario (no fraccionar):** implementar el mecanismo probado del
+AS2K con las restricciones propias del MC68HC11D0P, y probar Payload-0
+específico. DIAG-ROM-Pro y OS2K-Pro son desarrollos futuros expresamente
+fuera de AP-07. No crear stable ni modificar AS2K.
+
+**Producto fuente real en ASPRO:**
+- `src/payload0_pro.asm`: candidato visual `BOOT OK`, usa PA7/PACTL,
+  registros de Pro y RAM desde $0040; no copia MMIO LCD AS2K.
+- `tools/ap07_assemble_payload0.py`: ensamblador reutilizado del proyecto
+  Payload-0 donante, adaptado a límites RAM/pila Pro.
+- `tools/ap07_patch_d0_cpu.py`: adaptación acotada del parche CPU
+  D0 de AS2K (HPRIO, MDA, ejecución RAM post-transferencia).
+  Verifica blobs pinneados y **sólo parchea** ASPRO/build/send-mame,
+  preservando originales para reversión.
+- Driver `alphasma.cpp`: `BOOTSTRAP_MODE` opt-in; modo normal por
+  defecto; carga privada `payload0_pro.bin` 1..192 bytes desde el
+  directorio snapshot y llama `diag_bootstrap_load` sólo en modo especial.
+- `build_send_diag.sh`: aplica el parche CPU a la copia independiente
+  antes del make incremental `-j3`.
+- `ap07_static_campaign.py`, `ap07_observe.lua`, `ap07_campaign.py`,
+  `ap07_run_once.sh`: preparación, regresión con ROM normal y
+  prueba dirigida de RAM/LCD en un único job, con resultados privados Drive.
+
+**Validación efectivamente efectuada fuera de T:** verificación independiente
+del ensamblado fuente y 12 comprobaciones de estructura y conexión:
+121 bytes, $0040..$00B8, hold PC=$008B, mensaje=$00B1,
+SHA256=`25516cfc116850b4e7ac8b2a54f24137ec3d0250fde5c283b12848bd68517d53`.
+No se han ejecutado `ap07_static_campaign.py`, `make` ni MAME
+en T; tampoco se ha ejecutado el binario. Commander utilizado: 0 llamadas.
+
+**Clasificación estricta:** `AP07_STATIC_SOURCE_INTEGRATED /
+BUILD_PENDING / POST_SCI_DIAG_DYNAMIC_PENDING /
+AUTHENTIC_SCI_NOT_IMPLEMENTED / LCD_VISUAL_PENDING`.
+Este incremento copia deliberadamente la **semántica AS2K de carga
+post-SCI**, NO reproduce todavía el bootstrap ROM real, la sincronización
+eléctrica ni eco SCI; no adjudicar `AUTHENTIC_SCI_PASS`.
+Una prueba RAM/post-transferencia no cierra todavía el contrato SCI original.
+La campaña está preparada, pero la intervención remota exige
+autorización explícita (máximo 3 llamadas, sin polling).
+Conservar toda evidencia en Drive y sin publicar ROMs privadas.
