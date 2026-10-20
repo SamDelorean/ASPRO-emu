@@ -102,7 +102,6 @@ public:
     void aspro_send(machine_config &config);
 protected:
     virtual void machine_reset() override;
-    virtual void machine_stop() override;
 private:
     uint8_t pro_port_a_r();
     void pro_port_d_w(uint8_t data);
@@ -180,12 +179,6 @@ void aspro_send_state::machine_reset()
     pc_keyboard_reset();
     send_sink_end();
     m_pc_session_connected = false;
-}
-
-void aspro_send_state::machine_stop()
-{
-    // Safety flush only; a normal session is already closed by PC disconnection.
-    send_sink_end();
 }
 
 void aspro_send_state::sync_pc_session()
