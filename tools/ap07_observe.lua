@@ -38,9 +38,31 @@ emu.register_frame_done(function()
             if do_boot and pc==expected then log("PC_HOLD") end
         else log("PC_STATE_UNAVAILABLE") end
     end
-    if frame==150 then
+
+    if not do_boot and frame==500 then
+        local ok=pcall(function()
+            local keyport=assert(ports[":COL.14"])
+            for _,f in pairs(keyport.fields) do
+                if f.mask==0x10 then f:set_value(1); return end
+            end
+            error("key A not found")
+        end)
+        if ok then log("NORMAL_KEY_A_DOWN") else log("NORMAL_KEY_A_FAILED") end
+    end
+    if not do_boot and frame==520 then
+        local ok=pcall(function()
+            local keyport=assert(ports[":COL.14"])
+            for _,f in pairs(keyport.fields) do
+                if f.mask==0x10 then f:clear_value(); return end
+            end
+        end)
+        if ok then log("NORMAL_KEY_A_UP") end
+    end
+    if (do_boot and frame==150) or (not do_boot and frame==650) then
         local ok=pcall(function() screen:snapshot("bootstrap.png") end)
         if ok then log("LCD_SNAPSHOT") else log("LCD_SNAPSHOT_FAILED") end
+    end
+    if (do_boot and frame==160) or (not do_boot and frame==690) then
         log("OBSERVATION_COMPLETE")
     end
 end)
