@@ -66,3 +66,13 @@ Si el Pro usa otra codificación, líneas, host sense o tiempo que AS2K, adaptar
 ## Enmienda autorizada: límites de sesión por conexión PC
 
 **Regla explícita del usuario:** **conectar PC abre una sesión y desconectar PC la cierra**. Ninguna pulsación Send debe abrir otra captura ni cerrarla. La clase ASPRO `aspro_send_state` ahora detecta los cambios de `PC_CONNECTED` durante el sondeo PA/PD, ejecuta `send_sink_begin` al conectar y `send_sink_end` al desconectar, y sólo procesa bytes físicos durante la sesión. Dos pulsaciones Send consecutivas sobre un único archivo que contiene `abc` deben generar **un único `send.txt` con `abcabc`**, no dos archivos ni un fichero sustituido. Se exigen los marcadores de comienzo/fin, exactamente una apertura/cierre, y la coincidencia literal de seis bytes. `machine_stop` conserva únicamente un cierre de seguridad si hay una desconexión abrupta; no es el contrato normal. Esta enmienda se validará con el firmware Pro, no se asume PASS sin prueba.
+
+## Actualización de evidencia — sesión PC y controles externos (20-oct-2026)
+
+La campaña física real ya produjo `abcabc` (**6/6 bytes** tras dos `Send` en una conexión), con SHA256 `bbb59da3af939f7af5f360f2ceb80a496e3bae1cd87dde426db0ae40677e1c2c`, y el binario ASPRO propio compila con `-j3`. El problema no está en el receptor Set 2: la prueba seguía capturando el puerto `PC_CONNECTED` como HIGH después de pedir su desconexión, como demuestra `ASPRO_AP06_PC_PORT_READBACK_1` en [observaciones de la tercera prueba](https://drive.google.com/file/d/1MqZ-FHgD9XidY8G9Y4dXUAXjbJsILrnW/view).
+
+Se probaron dos arreglos insuficientes: `PORT_CHANGED_MEMBER` y un temporizador de 10ms. El estado `PORT_TOGGLE` continuaba enclavado pese a `attached:set_value(0)`, por lo que el cierre por desconexión no tenía aún un evento real LOW que observar.
+
+**Corrección más reciente `d5c68bd7`:** entrada DIAG `PC_CONNECTED` sin `PORT_TOGGLE`; es un estado binario explícito `set_value(1)` para conectar, `set_value(0)` para desconectar. La representación de un botón de interfaz que alterna ese estado queda para el frontend, no para la señal subyacente. Se conservan callback+temporizador y todo el transporte probado. **Esta corrección no tiene todavía comprobación dinámica**. Exigir estado LOW leído del puerto, un solo evento de cierre y `abcabc` exacto antes de `FULL_SEND_SESSION_PASS`.
+
+Evidencias del cierre incompleto: [primer `abcabc`](https://drive.google.com/file/d/1Kx5pDDaAm8YITgTIpgkO29gJ0TM3lX4p/view), [callback insuficiente](https://drive.google.com/file/d/1yzujO4DOhxqB05CAJpSIx74ki3qR3niP/view), [temporizador con puerto enclavado](https://drive.google.com/file/d/1h9jwgG582P-x4BdBjwTmnCWE4u7G6iN2/view). No confundir transmisión PASS con cierre de sesión PASS.
