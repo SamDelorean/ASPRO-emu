@@ -61,8 +61,16 @@ local function tick()
     if frame==1376 then release(); log("SECOND_SEND_KEY_RELEASED") end
     if frame==1450 then snapshot("after_send") end
     if frame==1550 then
-        attached:clear_value()
+        -- PC_CONNECTED is a PORT_TOGGLE field: explicitly force LOW rather
+        -- than clear the Lua override and inherit a potentially latched state.
+        attached:set_value(0)
         log("PC_DETACHED")
+    end
+    if frame==1560 then
+        -- Diagnostic readback only; a missing Lua read interface cannot
+        -- turn this into a false functional PASS.
+        local ok,value=pcall(function() return ports[":PC_CONNECTED"]:read() end)
+        if ok then log("PC_PORT_READBACK_"..tostring(value & 0x01)) end
     end
     if frame==1650 then
         release()
