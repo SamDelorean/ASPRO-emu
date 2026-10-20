@@ -30,7 +30,7 @@ def launch(exe,rom,lcd,payload,hold,mode):
                 with zipfile.ZipFile(staged/zname,"w",zipfile.ZIP_STORED) as z:
                     z.write(p,arcname=member)
             video,prefix=video_mode("auto")
-            cmd=command(exe,out,staged,8,video,prefix)
+            cmd=command(exe,out,staged,8 if mode=="bootstrap" else 15,video,prefix)
             cmd[cmd.index("-autoboot_script")+1]=str(lua)
             with (out/"stdout.log").open("wb") as stdout,(out/"stderr.log").open("wb") as stderr:
                 def limit():resource.setrlimit(resource.RLIMIT_FSIZE,(16*1024*1024,16*1024*1024))
@@ -54,6 +54,7 @@ def launch(exe,rom,lcd,payload,hold,mode):
             and rep["post_sci_injection_seen"] else
             "NORMAL_BOOT_PROCESS_OBSERVED_VISUAL_UNVERIFIED"
             if mode=="normal" and rep.get("exit_code")==0 and rep["observer_complete"]
+            and rep["normal_key_a_down"] and rep["normal_key_a_up"]
             else "AP07_RUNTIME_UNVERIFIED")
         (out/"report.json").write_text(json.dumps(rep,indent=2)+"\n")
     return rep
@@ -71,7 +72,14 @@ def main():
     if not rom_audit["expected_212"] or rom_audit["reset"]!="C000":p.error("wrong Pro ROM")
     if len(a.lcd_rom.read_bytes())!=4096 or hashlib.sha1(a.lcd_rom.read_bytes()).hexdigest()!=KS0066_F05_SHA1:p.error("wrong LCD ROM")
     exe=a.bin.resolve(strict=True)
-    if exe!=(ROOT/"build/send-mame/asprodiag").resolve() or exe.is_symlink():p.error("not independent ASPRO-DIAG binary")
+    tree=(ROOT/"build/send-mame").resolve()
+    if exe!=tree/"asprodiag" or exe.is_symlink():p.error("not independent ASPRO-DIAG binary")
+    marker=json.loads((tree/".ap07-cpu-marker.json").read_text())
+    binary=json.loads((tree/".aspro-binary.json").read_text())
+    if marker.get("feature")!="AP07_POST_SCI_D0P" or marker.get("authentic_sci") is not False:
+        p.error("D0 CPU patch provenance mismatch")
+    if binary.get("binary_sha256")!=sha(exe) or binary.get("variant")!="ASPRO-DIAG":
+        p.error("independent binary SHA mismatch")
     payload=a.payload.read_bytes()
     from ap07_d0_bootstrap_contract import validate_payload
     validate_payload(payload)
@@ -81,7 +89,8 @@ def main():
     (ROOT/"private/ap07/report.latest.json").write_text(json.dumps(combined,indent=2)+"\n")
     print(json.dumps(combined,indent=2))
     return 0 if (results[0]["cpu_hold_observed"] and results[1]["observer_complete"] and
-                 results[0]["post_sci_injection_seen"]) else 4
+                 results[0]["post_sci_injection_seen"] and
+                 results[1]["normal_key_a_down"] and results[1]["normal_key_a_up"]) else 4
 
 if __name__=="__main__":
     raise SystemExit(main())
