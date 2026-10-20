@@ -6,6 +6,12 @@ Emulador reducido de AlphaSmart Pro basado en **MAME 0.289 y el driver existente
 
 **Único entorno autorizado para pruebas:** `ASPRO-DIAG` (`asprodiag`). Una eventual versión estable dependerá de la decisión posterior del usuario y nunca se utilizará como banco de pruebas.
 
+## Estado funcional — 20-oct-2026
+
+**AP-02 a AP-04: PASS funcional emulado acotado.** Se reutilizó el motor MAME-DIAG de AS2K como una copia ASPRO independiente (sin recompilación ni modificaciones a AS2K). ROM Pro 2.1.2: arranque y LCD/teclado básicos PASS visual (AP-03); ocho archivos F1–F8 con caracteres `a`–`h` diferenciados y recuperación idéntica después de salir y volver a iniciar la emulación compartiendo exclusivamente su NVRAM privada (AP-04). [Evidencias AP-04](docs/AP04_FILES_NVRAM_FUNCTIONAL_EVIDENCE.md).
+
+La clasificación automática de `run_diag.py` permanece conservadora (`functional_pass:false`) porque no interpreta el texto LCD: el PASS calificado aquí procede de capturas reales inspeccionadas y hashes de ocho parejas write/verify. No valida hardware físico, otras funciones de Writer, impresión ni todas las modalidades del firmware. ASPRO-STABLE/integración AS2K siguen sujetos a decisión del usuario.
+
 ## Resultados disponibles
 
 - Firmware principal: AlphaSmart Pro 2.1.2, 32 KiB, SHA-1 `c3c6a421c9ced92db97431d04b4a3f09a39de716`; datos **privados fuera de Git**.
