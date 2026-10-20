@@ -13,9 +13,10 @@ SRC_SHA=$(sha256sum "$SOURCE" | cut -d' ' -f1)
 MARKER="$TREE/.aspro-send-source.json"
 
 # Prefer existing proven T MAME 0.289 source HEAD; export read-only into ASPRO.
-# For future runs, validate exact marker & driver only; no source-tree rebuild.
+# For future runs, verify previous ASPRO copy and refresh ONLY changed Pro driver.
+# All existing independent MAME object files remain intact for incremental make.
 if [[ -f "$MARKER" ]]; then
-    python3 "$ROOT/tools/prepare_send_mame.py" --check
+    python3 "$ROOT/tools/prepare_send_mame.py" --refresh-driver
 else
     python3 "$ROOT/tools/prepare_send_mame.py" --reference "$REF"
 fi
