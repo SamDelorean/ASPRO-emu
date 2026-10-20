@@ -57,6 +57,8 @@ local function tick()
     if frame==880 then snapshot("host_attached") end
     if frame==1020 then press("send") end
     if frame==1036 then release(); log("SEND_KEY_RELEASED") end
+    if frame==1360 then press("send"); log("SEND_SECOND_TRIGGER") end
+    if frame==1376 then release(); log("SECOND_SEND_KEY_RELEASED") end
     if frame==1450 then snapshot("after_send") end
     if frame==1550 then
         attached:clear_value()
