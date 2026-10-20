@@ -102,6 +102,7 @@ public:
     void aspro_send(machine_config &config);
     DECLARE_INPUT_CHANGED_MEMBER(pc_connected_changed);
 protected:
+    virtual void machine_start() override ATTR_COLD;
     virtual void machine_reset() override;
 private:
     uint8_t pro_port_a_r();
@@ -111,6 +112,7 @@ private:
     void pc_key_event(as2k_pc_key key, bool pressed);
     void pc_keyboard_reset();
     void sync_pc_session();
+    TIMER_CALLBACK_MEMBER(pc_session_tick);
     void send_sink_begin();
     void send_sink_codepoint(char32_t codepoint);
     void send_sink_end();
@@ -170,6 +172,20 @@ void aspro_send_state::aspro_send(machine_config &config)
     alphasmart(config); // Pro memory map / LCD / keyboard / NVRAM UNCHANGED.
     m_maincpu->in_pa_callback().set(FUNC(aspro_send_state::pro_port_a_r));
     m_maincpu->out_pd_callback().set(FUNC(aspro_send_state::pro_port_d_w));
+}
+
+void aspro_send_state::machine_start()
+{
+    alphasmart_state::machine_start();
+    // Lua field overrides may not fire PORT_CHANGED_MEMBER; keep host state
+    // independent of ROM PA/PD polling, as in AS2K UI bridge timers.
+    timer_alloc(FUNC(aspro_send_state::pc_session_tick), this)->adjust(
+        attotime::from_msec(10), 0, attotime::from_msec(10));
+}
+
+TIMER_CALLBACK_MEMBER(aspro_send_state::pc_session_tick)
+{
+    sync_pc_session();
 }
 
 void aspro_send_state::machine_reset()
