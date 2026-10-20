@@ -5,7 +5,7 @@ set -euo pipefail
 umask 077
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
 MAME_REFERENCE="${1:?Usage: ap06_run_once.sh READ_ONLY_MAME_TREE [jobs]}"
-JOBS="${2:-2}"
+JOBS="${2:-3}"
 cd "$ROOT"
 OUT="$ROOT/private/ap06"
 mkdir -p "$OUT"
