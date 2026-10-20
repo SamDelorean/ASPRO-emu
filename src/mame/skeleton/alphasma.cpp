@@ -110,6 +110,7 @@ private:
     void pc_set2_byte(uint8_t data);
     void pc_key_event(as2k_pc_key key, bool pressed);
     void pc_keyboard_reset();
+    void sync_pc_session();
     void send_sink_begin();
     void send_sink_codepoint(char32_t codepoint);
     void send_sink_end();
@@ -130,6 +131,7 @@ private:
     bool m_pc_alt_numeric_valid = false;
     uint8_t m_pc_alt_numeric_count = 0;
     char m_pc_alt_numeric_digits[4]{};
+    bool m_pc_session_connected = false;
     bool m_send_sink_active = false;
     bool m_send_sink_had_data = false;
     std::unique_ptr<emu_file> m_send_sink;
@@ -177,15 +179,40 @@ void aspro_send_state::machine_reset()
     m_pc_frame_bits = 0;
     pc_keyboard_reset();
     send_sink_end();
+    m_pc_session_connected = false;
 }
 
 void aspro_send_state::machine_stop()
 {
-    send_sink_end(); // PC TXT flushed on graceful DIAG termination.
+    // Safety flush only; a normal session is already closed by PC disconnection.
+    send_sink_end();
+}
+
+void aspro_send_state::sync_pc_session()
+{
+    bool const connected=pc_connected();
+    if (connected == m_pc_session_connected)
+        return;
+    // One capture per host connection, independent of how many Send keys.
+    m_pc_session_connected=connected;
+    m_pc_frame=0;
+    m_pc_frame_bits=0;
+    pc_keyboard_reset();
+    if (connected)
+    {
+        send_sink_begin();
+        logerror("ASPRO_PC_SESSION_CONNECTED\n");
+    }
+    else
+    {
+        send_sink_end();
+        logerror("ASPRO_PC_SESSION_DISCONNECTED\n");
+    }
 }
 
 uint8_t aspro_send_state::pro_port_a_r()
 {
+    sync_pc_session();
     // AS2K host sense donor: PA0 idle + PA2 attached; unverified on Pro hardware.
     uint8_t data = (m_port_a & 0xfd) | (m_battery_status->read() << 1);
     data &= ~uint8_t(0x05);
@@ -196,6 +223,7 @@ uint8_t aspro_send_state::pro_port_a_r()
 
 void aspro_send_state::pro_port_d_w(uint8_t data)
 {
+    sync_pc_session();
     // Stock donor's physical Set-2 RX sampling, no ROM subroutine interception.
     if (pc_connected() && !BIT(m_port_d,0) && BIT(data,0))
         pc_clock_rising(!BIT(data,1));
@@ -204,8 +232,8 @@ void aspro_send_state::pro_port_d_w(uint8_t data)
 
 void aspro_send_state::send_sink_begin()
 {
-    // File is written only on actual parity-checked PC keyboard frames.
-    // Separate ASPRO private snapshots directory, never donor AS2K output.
+    // Open exactly once on PC attach, even when no bytes follow.
+    // Decode and append only actual parity-checked firmware frames.
     m_send_sink = std::make_unique<emu_file>(
         std::string(machine().options().snapshot_directory()),
         OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
@@ -281,15 +309,9 @@ void aspro_send_state::pc_clock_rising(bool data)
 
 	if (valid)
 	{
-		if (!m_send_sink_active)
-		{
-			if (!pc_connected())
-				return;
-			send_sink_begin();
-			if (!m_send_sink_active)
-				return;
-		}
-
+        // Session is owned by the PC attach/detach boundary, not first byte.
+        if (!m_pc_session_connected || !m_send_sink_active)
+            return;
 		pc_set2_byte(value);
 	}
 	else
