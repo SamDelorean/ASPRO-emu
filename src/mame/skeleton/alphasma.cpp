@@ -98,7 +98,7 @@ class aspro_send_state : public alphasmart_state
 {
 public:
     aspro_send_state(const machine_config &mconfig, device_type type, const char *tag)
-        : alphasmart_state(mconfig, type, tag), m_pc_connected(*this, "PC_CONNECTED") {}
+        : alphasmart_state(mconfig, type, tag), m_pc_connected(*this, "PC_CONNECTED"), m_bootstrap_mode(*this, "BOOTSTRAP_MODE") {}
     void aspro_send(machine_config &config);
     DECLARE_INPUT_CHANGED_MEMBER(pc_connected_changed);
 protected:
@@ -118,6 +118,7 @@ private:
     void send_sink_end();
     bool pc_connected() const { return BIT(m_pc_connected->read(), 0); }
     required_ioport m_pc_connected;
+    required_ioport m_bootstrap_mode;
     uint16_t m_pc_frame = 0;
     uint8_t m_pc_frame_bits = 0;
     bool m_pc_set2_break = false;
@@ -196,6 +197,28 @@ void aspro_send_state::machine_reset()
     pc_keyboard_reset();
     send_sink_end();
     m_pc_session_connected = false;
+    // The AS2K donor's diagnostic POST-transfer entry, selected explicitly.
+    // This is NOT an emulation of the D0's internal bootstrap ROM or SCI pins.
+    auto &d0 = downcast<mc68hc11d0_device &>(*m_maincpu);
+    const bool selected = BIT(m_bootstrap_mode->read(), 0);
+    d0.set_diag_bootstrap(selected);
+    if (selected)
+    {
+        emu_file file(std::string(machine().options().snapshot_directory()), OPEN_FLAG_READ);
+        auto const error = file.open("payload0_pro.bin");
+        if (error)
+            fatalerror("AP07 BOOTSTRAP payload0_pro.bin missing in snapshot directory: %s", error.message());
+        auto const file_size = file.size();
+        if (file_size < 1 || file_size > 192)
+            fatalerror("AP07 BOOTSTRAP invalid Pro payload length %llu (required 1..192)",
+                (unsigned long long)file_size);
+        std::array<uint8_t, 192> image{};
+        if (file.read(image.data(), size_t(file_size)) != size_t(file_size))
+            fatalerror("AP07 BOOTSTRAP truncated payload read");
+        d0.diag_bootstrap_load(image.data(), uint16_t(file_size), 0x0040);
+        logerror("ASPRO_AP07_POST_SCI_BOOTSTRAP_INJECTION size=%u pc=0040 hprio=%02X\\n",
+            unsigned(file_size), unsigned(d0.hprio()));
+    }
 }
 
 INPUT_CHANGED_MEMBER(aspro_send_state::pc_connected_changed)
@@ -963,6 +986,10 @@ static INPUT_PORTS_START( aspro_send )
     PORT_INCLUDE( alphasmart )
     PORT_START("PC_CONNECTED")
     PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("ASPRO PC Connected (external state)") PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(aspro_send_state::pc_connected_changed), 0)
+    PORT_START("BOOTSTRAP_MODE")
+    PORT_CONFNAME(0x01, 0x00, "AP-07 D0 special bootstrap (diagnostic post-transfer)")
+    PORT_CONFSETTING(0x00, "Normal AlphaSmart Pro ROM")
+    PORT_CONFSETTING(0x01, "RAM payload: POST-SCI injection")
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( asma2k )
