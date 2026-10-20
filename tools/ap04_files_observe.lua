@@ -1,6 +1,8 @@
 -- ASPRO-DIAG AP-04: eight distinct files, two phases separated by MAME restart.
 -- Test-only keyboard input, all via existing MAME 0.289 ioport_field API.
--- Phase 'write': choose F1..F8, type 'a'..'h'; phase 'verify': reopen F1..F8.
+-- Longer dwell from actual evidence: early snapshots showed 'Opening File N...' after ~1.5s.
+-- Phase 'write': wait for file opening, capture before typing, then type a..h.
+-- Phase 'verify': wait and capture F1..F8 after restart.
 local phase = assert(os.getenv("ASPRO_AP04_PHASE"), "ASPRO_AP04_PHASE missing")
 assert(phase == "write" or phase == "verify", "invalid phase")
 local machine = manager.machine
@@ -66,23 +68,28 @@ local function step()
     frame=frame+1
     if frame < 410 then return end
     for i=1,8 do
-        local base=410+(i-1)*130
+        local base=410+(i-1)*650
         if frame == base then press(fkeys[i],"KEY_F"..i.."_DOWN") end
         if frame == base+12 then release(); event("KEY_F"..i.."_UP") end
         if phase=="write" then
-            if frame == base+30 then press(ckeys[i],"CHAR_"..string.char(96+i).."_DOWN") end
-            if frame == base+42 then release(); event("CHAR_"..string.char(96+i).."_UP") end
+            if frame == base+465 then press(ckeys[i],"CHAR_"..string.char(96+i).."_DOWN") end
+            if frame == base+482 then release(); event("CHAR_"..string.char(96+i).."_UP") end
         end
-        if frame == base+75 then snapshot(i) end
+        if frame == base+430 and phase=="write" then
+            local err=screen:snapshot(string.format("ready_f%d.png",i))
+            if err then error("ready snapshot failed") end
+            event("READY_SNAPSHOT_F"..i)
+        end
+        if frame == base+575 then snapshot(i) end
     end
-    if frame==1500 then
+    if frame==5600 then
         release()
         if shots~=8 then error("missing file screenshots") end
         event("OBSERVATION_COMPLETE")
     end
 end
 emu.register_frame_done(function()
-    if failed or frame>=1500 then return end
+    if failed or frame>=5600 then return end
     local ok,err=pcall(step)
     if not ok then
         failed=true; pcall(release)
