@@ -74,7 +74,11 @@ def perform(rom:Path,lcd:Path,binary:Path):
             cmd[cmd.index("-autoboot_script")+1]=str(OBSERVE)
             env=dict(os.environ,ASPRO_CAPTURE="1")
             def limit():
-                resource.setrlimit(resource.RLIMIT_FSIZE,(1024*1024,1024*1024))
+                # AP-06: the previous 1 MiB per-file limit terminated MAME
+                # with SIGXFSZ before second Send / PC disconnect.
+                # Keep a bounded 16 MiB cap for diagnostic logs, not unlimited.
+                cap = 16 * 1024 * 1024
+                resource.setrlimit(resource.RLIMIT_FSIZE,(cap,cap))
             with (out/"stdout.log").open("wb") as stdout,(out/"stderr.log").open("wb") as stderr:
                 proc=subprocess.Popen(cmd,cwd=out,env=env,stdout=stdout,stderr=stderr,
                     start_new_session=True,preexec_fn=limit)
@@ -83,6 +87,11 @@ def perform(rom:Path,lcd:Path,binary:Path):
                 except subprocess.TimeoutExpired:
                     report["status"]="TIMEOUT"
                     report["exit_code"]=None
+        # Evidence of which log grew, without exposing private ROM/data.
+        report["log_bytes"] = {
+            name: (out/name).stat().st_size if (out/name).is_file() else None
+            for name in ("stdout.log","stderr.log","error.log","observations.log")
+        }
         obs=(out/"observations.log").read_text() if (out/"observations.log").exists() else ""
         err=(out/"error.log").read_text(errors="replace") if (out/"error.log").exists() else ""
         for tag in ["LUA_ATTACHED","KEY_a_DOWN","KEY_b_DOWN","KEY_c_DOWN",
