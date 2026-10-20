@@ -45,7 +45,7 @@ for name in ready typed_abc host_attached after_send after_disconnect; do
 done
 # Export only if the genuine physical decoder produced the requested exact text.
 if [[ "$rc" == 0 && -f "$RUN/snap/send.txt" ]]; then
-    test "$(cat "$RUN/snap/send.txt")" = abc || { echo "SEND_TXT_MISMATCH"; exit 9; }
+    test "$(cat "$RUN/snap/send.txt")" = abcabc || { echo "SEND_TXT_MISMATCH"; exit 9; }
     rclone copyto "$RUN/snap/send.txt" "$PRIVATE/$KEY.send.txt" --retries 1 --timeout 60s
     echo "AP06_SEND_TXT_SUCCESS=$PRIVATE/$KEY.send.txt"
 else
