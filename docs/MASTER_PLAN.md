@@ -44,3 +44,11 @@ No subdividir en PRE-01 / GATE-X / REQUALIFY a menos que un fallo real documenta
 
 ## Estado del 19-oct-2026
 AP-01 implementado estáticamente como scripts y documentación. **Sin compilación ni ejecución de MAME**. AP-02 espera ejecución autorizada.
+
+## AP-07 — bootstrap del MC68HC11D0P según datasheet Motorola/NXP (20-oct-2026)
+
+**Directriz del usuario:** el AlphaSmart Pro utilizará la capacidad real de `special bootstrap` de **su MCU MC68HC11D0P DIP40**, no los supuestos de ZPSD/DictROM de AS2K ni una rutina inventada. El modo se selecciona en RESET con `MODB=MODA=0`, la ROM especial `$BF40–$BFFF` carga por `SCI PD0/RxD` y responde por `PD1/TxD`; usa `$FF` para sincronización, 0–192 bytes en RAM `$0040–$00FF`, y ejecuta desde `$0040` después del fin de carga. El D0 no tiene ROM principal interna de usuario (a diferencia del D3). La validación específica de Pro restringe los programas a 1–192 bytes para impedir salto voluntario a RAM no inicializada.
+
+**Fuentes y contrato verificable:** [AP07_MC68HC11D0P_BOOTSTRAP.md](AP07_MC68HC11D0P_BOOTSTRAP.md), hojas de datos Motorola/NXP y AN1060 revisados. Ya hay validador `tools/ap07_d0_bootstrap_contract.py` y regresión estática `tools/ap07_static_selftest.py`, **sin reivindicar ejecución de bootstrap**. El CPU MAME base deja la SCI mayoritariamente sin implementar; el parche D0 en AS2K es un modelo diagnóstico de estado *posterior* a la descarga, útil como donante técnico pero **no prueba de sincronización/eco SCI**.
+
+**Siguiente trabajo coherente:** implementar en ASPRO-DIAG propio la entrada opt-in especial, lógica SCI acorde al bootloader, límite de RAM/eco/finalización, reuso acotado de D0 HPRIO/PC, y ejecutar una única campaña sintética con ROM privada sólo en `asprodiag`. Preservar intactos arranque stock, PC Send/TXT y NVRAM. No reconstruir AS2K, ASPRO-STABLE ni repetir AP-02–AP-06. T640 `-j3`, Commander sólo bajo intervención autorizada y pruebas con evidencias en Drive.
