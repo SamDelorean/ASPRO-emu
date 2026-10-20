@@ -57,7 +57,7 @@ def perform(rom:Path,lcd:Path,binary:Path):
             "binary_sha256":sha(exe),"run_dir":str(out),
             "status":"EXECUTION_PENDING","functional_pass":False,
             "protocol":"REAL_PORTD_PS2_FRAMES_SET2_AS2K_DONOR",
-            "expected_text":"abc","actual_txt_bytes":None,
+            "expected_text":"abcabc","actual_txt_bytes":None,
             "screenshots":{},"rom_staging_clean":"PENDING"}
     proc=None
     try:
@@ -87,6 +87,7 @@ def perform(rom:Path,lcd:Path,binary:Path):
         err=(out/"error.log").read_text(errors="replace") if (out/"error.log").exists() else ""
         for tag in ["LUA_ATTACHED","KEY_a_DOWN","KEY_b_DOWN","KEY_c_DOWN",
                     "PC_ATTACHED","KEY_send_DOWN","SEND_KEY_RELEASED",
+                    "SEND_SECOND_TRIGGER","SECOND_SEND_KEY_RELEASED",
                     "PC_DETACHED","OBSERVATION_COMPLETE","OBSERVATION_FAILED"]:
             report[tag]="ASPRO_AP06_"+tag+"\n" in obs
         for image in ["ready","typed_abc","host_attached","after_send","after_disconnect"]:
@@ -99,17 +100,25 @@ def perform(rom:Path,lcd:Path,binary:Path):
             report["actual_txt_bytes"]=len(raw)
             report["actual_txt_sha256"]=sha(txt)
             report["actual_txt_preview"]=raw[:256].decode("utf-8",errors="replace")
-            report["text_is_exact"]=raw==b"abc"
+            report["text_is_exact"]=raw==b"abcabc"
         else:
             report["actual_txt_bytes"]=0
             report["text_is_exact"]=False
         report["physical_decoder_seen"]="ASPRO_PC_TXT_OPEN" in err
         report["physical_decoder_finished"]="ASPRO_PC_TXT_FINISHED" in err
+        report["session_begin_seen"]="ASPRO_PC_SESSION_CONNECTED" in err
+        report["session_end_seen"]="ASPRO_PC_SESSION_DISCONNECTED" in err
+        report["session_open_count"]=err.count("ASPRO_PC_TXT_OPEN\n")
+        report["session_close_count"]=err.count("ASPRO_PC_TXT_FINISHED\n")
         report["status"]=(
             "SEND_TXT_DYNAMIC_PASS"
             if report.get("exit_code")==0 and report["OBSERVATION_COMPLETE"]
             and not report["OBSERVATION_FAILED"] and report["PC_ATTACHED"]
-            and report["KEY_send_DOWN"] and report["text_is_exact"]
+            and report["KEY_send_DOWN"] and report["SEND_SECOND_TRIGGER"]
+            and report["PC_DETACHED"] and report["text_is_exact"]
+            and report["session_begin_seen"] and report["session_end_seen"]
+            and report["session_open_count"] == 1
+            and report["session_close_count"] == 1
             and report["physical_decoder_seen"]
             else "SEND_TXT_DYNAMIC_UNVERIFIED")
         report["functional_pass"]=report["status"]=="SEND_TXT_DYNAMIC_PASS"
