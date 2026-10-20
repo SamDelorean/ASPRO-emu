@@ -41,6 +41,13 @@ for phase in write verify; do
         [[ -f "$img" ]] || continue
         rclone copyto "$img" "$REMOTE""ALPHASMART/Alphasmart Pro/ASPRO_DIAG_PRIVATE/${KEY}_${phase}_f${i}.png" --retries 1 --timeout 50s
     done
+    if [[ "$phase" == write ]]; then
+        for i in 1 2 3 4 5 6 7 8; do
+            img="$RUN/write/snap/ready_f$i.png"
+            [[ -f "$img" ]] || continue
+            rclone copyto "$img" "$REMOTE""ALPHASMART/Alphasmart Pro/ASPRO_DIAG_PRIVATE/${KEY}_write_ready_f${i}.png" --retries 1 --timeout 50s
+        done
+    fi
     obs="$RUN/$phase/observations.log"
     if [[ -f "$obs" ]]; then
         rclone copyto "$obs" "$REMOTE""AS2K_TEMP/COMMANDER_PIPELINE/outbox/ASPRO_${KEY}_${phase}.observations.txt" --retries 1 --timeout 50s
