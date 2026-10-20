@@ -18,6 +18,8 @@
 #include "fileio.h"
 #include "emuopts.h"
 #include <array>
+#include <iterator>
+#include <string_view>
 #include <string>
 #include "cpu/mc68hc11/mc68hc11.h"
 #include "machine/nvram.h"
