@@ -33,6 +33,31 @@ def check(target,driver):
         raise ValueError("missing MAME makefile")
     return marker
 
+def refresh_driver():
+    """Recompile only changed ASPRO driver in existing isolated MAME worktree.
+
+    Refuses modifications to donor MAME and verifies the previously pinned copy
+    before replacing it. All existing build objects/caches remain available.
+    """
+    target=OWN/NAME
+    driver=ROOT/"src/mame/skeleton/alphasma.cpp"
+    original=target/"src/mame/skeleton/alphasma.cpp"
+    if (target.is_symlink() or (ROOT/"build").is_symlink()
+            or not target.resolve()==OWN/NAME or original.is_symlink()
+            or driver.is_symlink()):
+        raise ValueError("APRO-only nonsymlink source/build directories required")
+    marker=json.loads((target/MARKER).read_text())
+    if (marker.get("feature")!="AP06_PC_SEND"
+            or marker.get("destination")!=str(target)
+            or not (target/"makefile").is_file()
+            or digest(original)!=marker.get("driver_sha256")):
+        raise ValueError("previous ASPRO source marker mismatch or changed worktree")
+    if digest(driver)!=marker["driver_sha256"]:
+        original.write_bytes(driver.read_bytes())
+        marker["driver_sha256"]=digest(driver)
+        (target/MARKER).write_text(json.dumps(marker,indent=2)+"\n")
+    return check(target,driver)
+
 def run(ref):
     if (ROOT/"build").is_symlink():
         raise ValueError("ASPRO/build cannot be symlink")
@@ -100,11 +125,13 @@ if __name__=="__main__":
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--reference",type=Path)
     parser.add_argument("--check",action="store_true")
+    parser.add_argument("--refresh-driver",action="store_true")
     x=parser.parse_args()
     if not x.check and not x.reference:
         parser.error("--reference is required to prepare")
     try:
-        result=(check(OWN/NAME,ROOT/"src/mame/skeleton/alphasma.cpp")
+        result=(refresh_driver() if x.refresh_driver else
+                check(OWN/NAME,ROOT/"src/mame/skeleton/alphasma.cpp")
                 if x.check else run(x.reference))
     except (OSError,ValueError,subprocess.SubprocessError,tarfile.TarError) as e:
         parser.exit(3,"AP06_PREP_BLOCKED: "+str(e)+"\n")
