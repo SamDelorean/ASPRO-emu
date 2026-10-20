@@ -127,7 +127,7 @@ if __name__=="__main__":
     parser.add_argument("--check",action="store_true")
     parser.add_argument("--refresh-driver",action="store_true")
     x=parser.parse_args()
-    if not x.check and not x.reference:
+    if not (x.check or x.refresh_driver or x.reference):
         parser.error("--reference is required to prepare")
     try:
         result=(refresh_driver() if x.refresh_driver else
