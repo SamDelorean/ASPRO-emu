@@ -21,6 +21,9 @@ else
     python3 "$ROOT/tools/prepare_send_mame.py" --reference "$REF"
 fi
 
+# AP-07 integrates the bounded AS2K D0 CPU adapter in ASPRO's *copy* only.
+# The original MAME reference and AS2K project remain unmodified.
+python3 "$ROOT/tools/ap07_patch_d0_cpu.py" --tree "$TREE"
 for name in make g++ pkg-config; do command -v "$name" >/dev/null || { echo "BLOCKED missing $name"; exit 4; }; done
 pkg-config --exists sdl2 SDL2_ttf fontconfig || { echo "BLOCKED missing MAME SDL2 build dependencies"; exit 4; }
 CCACHE_DISABLE=1 MAKEFLAGS= make -C "$TREE" -j"$JOBS" TARGET=mame SUBTARGET=asprodiag \
