@@ -225,6 +225,12 @@ void aspro_send_state::sync_pc_session()
         send_sink_end();
         logerror("ASPRO_PC_SESSION_DISCONNECTED\n");
     }
+    // The Pro/AS2K firmware may be waiting for a keyboard IRQ before it
+    // samples host-present PA lines. Wake once per physical PC edge, without
+    // fabricating a key or touching the verified Set-2 transport. This is a
+    // testable compatibility hypothesis, NOT proof of a hardware IRQ wire.
+    m_maincpu->set_input_line(MC68HC11_IRQ_LINE, ASSERT_LINE);
+    logerror("ASPRO_PC_HOST_EDGE_WAKE_IRQ attached=%u\n", connected ? 1U : 0U);
 }
 
 uint8_t aspro_send_state::pro_port_a_r()
