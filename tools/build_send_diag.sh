@@ -12,33 +12,12 @@ test -f "$SOURCE" && test ! -L "$SOURCE" || { echo "BLOCKED missing ASPRO Pro Se
 SRC_SHA=$(sha256sum "$SOURCE" | cut -d' ' -f1)
 MARKER="$TREE/.aspro-send-source.json"
 
+# Prefer existing proven T MAME 0.289 source HEAD; export read-only into ASPRO.
+# For future runs, validate exact marker & driver only; no source-tree rebuild.
 if [[ -f "$MARKER" ]]; then
-    python3 - "$MARKER" "$SRC_SHA" "$TREE" <<'PY'
-import json,sys,pathlib,hashlib
-d=json.loads(pathlib.Path(sys.argv[1]).read_text())
-source=pathlib.Path(sys.argv[3])/"src/mame/skeleton/alphasma.cpp"
-assert d["driver_sha256"]==sys.argv[2] and hashlib.sha256(source.read_bytes()).hexdigest()==d["driver_sha256"], "ASPRO Send driver changed unexpectedly"
-assert d["source_commit"]=="c4e48388ca620472643110db2941ce70aa5f3c07", "wrong MAME base"
-assert d["destination"]==str(pathlib.Path(sys.argv[3]).resolve()), "wrong build tree"
-PY
+    python3 "$ROOT/tools/prepare_send_mame.py" --check
 else
-    python3 "$ROOT/tools/prepare_mame.py" --source "$REF" --dest "$TREE"
-    python3 - "$TREE" "$ROOT" "$SRC_SHA" <<'PY'
-import pathlib,json,hashlib,sys,shutil
-tree=pathlib.Path(sys.argv[1]).resolve()
-root=pathlib.Path(sys.argv[2]).resolve()
-source=root/"src/mame/skeleton/alphasma.cpp"
-dest=tree/"src/mame/skeleton/alphasma.cpp"
-if not tree.is_relative_to(root/"build") or dest.is_symlink():
-    raise SystemExit("BLOCKED ASPRO only; invalid destination")
-shutil.copyfile(source,dest)
-if hashlib.sha256(dest.read_bytes()).hexdigest()!=sys.argv[3]:
-    raise SystemExit("ASPRO Send source-copy hash mismatch")
-marker={"source_commit":"c4e48388ca620472643110db2941ce70aa5f3c07",
-        "destination":str(tree),"driver_sha256":sys.argv[3],
-        "donor":"SamDelorean/AS2K-Emulator release/vontar-stable-public-20261018"}
-(tree/".aspro-send-source.json").write_text(json.dumps(marker,indent=2)+"\n")
-PY
+    python3 "$ROOT/tools/prepare_send_mame.py" --reference "$REF"
 fi
 
 for name in make g++ pkg-config; do command -v "$name" >/dev/null || { echo "BLOCKED missing $name"; exit 4; }; done
