@@ -5,7 +5,7 @@ umask 077
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
 TREE="$ROOT/build/send-mame"
 REF="${1:?Usage: build_send_diag.sh READ_ONLY_MAME_REPO [jobs]}"
-JOBS="${2:-2}"
+JOBS="${2:-3}"
 [[ "$JOBS" =~ ^[1-9][0-9]*$ ]] || { echo "BLOCKED bad jobs"; exit 2; }
 SOURCE="$ROOT/src/mame/skeleton/alphasma.cpp"
 test -f "$SOURCE" && test ! -L "$SOURCE" || { echo "BLOCKED missing ASPRO Pro Send driver"; exit 3; }
