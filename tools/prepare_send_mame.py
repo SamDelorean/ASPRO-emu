@@ -63,11 +63,21 @@ def run(ref):
     try:
         with tarfile.open(fileobj=p.stdout,mode="r|") as archive:
             for member in archive:
-                if not (member.isfile() or member.isdir()):
-                    raise ValueError("unsupported archive member")
+                if not (member.isfile() or member.isdir() or member.issym() or member.islnk()):
+                    raise ValueError("unsupported archive member: "+member.name)
                 dest=(target/member.name).resolve()
                 if not dest.is_relative_to(target):
-                    raise ValueError("archive escapes ASPRO build")
+                    raise ValueError("archive escapes ASPRO build: "+member.name)
+                # MAME Git includes links. Preserve only internal links, never
+                # pointers into AS2K nor anywhere outside the ASPRO-owned copy.
+                if member.issym():
+                    resolved=(dest.parent/member.linkname).resolve()
+                    if not resolved.is_relative_to(target):
+                        raise ValueError("escaping source symlink: "+member.name)
+                if member.islnk():
+                    resolved=(target/member.linkname).resolve()
+                    if not resolved.is_relative_to(target):
+                        raise ValueError("escaping source hardlink: "+member.name)
                 archive.extract(member,target)
         if p.wait()!=0:
             raise ValueError("reference Git archive failed")
