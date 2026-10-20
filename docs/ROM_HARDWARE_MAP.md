@@ -16,7 +16,10 @@
 | LCD | 2 × KS0066F05 + 8 × HD44100H en Pro, 40×4; salida de 240×36 píxeles |
 | LCD I/O | Dos dispositivos KS0066, datos 4 bit por puerto D; control vía matriz alta y flancos de puerto A |
 | NVRAM | Batería de respaldo en placa; no se obliga a borrar memoria al reiniciar |
-| Comunicación PC/Mac | Pendiente; no bloquear primer arranque por ADB/PS2 |
+| Comunicación PC/Mac | **Puertos físicos confirmados:** PC AT/PS2 y Macintosh/IIGS ADB. Firmware ROM 2.1.2 contiene modos attached, Send y velocidad de transferencia; **no hay host/periférico ADB/PS2 en driver**, queda por implementar. Ver [AP-05](AP05_PERIPHERAL_HARDWARE_AUDIT.md). |
+| Infrarrojos IR/IrDA | **No documentados para Pro stock**; módulo IR opcional citado específicamente para AS2K/AS3K, no transferir al Pro. |
+| Alimentación y respaldo | 2 AA, pack NiCad opcional, DC externo, CR2032 SRAM, batería baja por PA1. Driver sólo modela NVRAM y Normal/Low; no electrónica de carga/retención. |
+| Interfaces sin evidencia Pro | USB, RS-232 físico, impresora directa, buzzer: no añadir por analogía con otras generaciones. |
 
 ### Distinciones y precauciones
 - No atribuir PDIUSBD11D/ISP1161ABD del documento `specs` a la revisión Pro sin evidencia visual: pueden proceder de otra generación.
