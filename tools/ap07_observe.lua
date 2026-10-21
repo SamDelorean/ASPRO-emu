@@ -39,6 +39,10 @@ emu.register_frame_done(function()
         else log("PC_STATE_UNAVAILABLE") end
     end
 
+    if not do_boot and frame==480 then
+        local ok=pcall(function() screen:snapshot("normal_before.png") end)
+        if ok then log("NORMAL_LCD_BEFORE") else log("NORMAL_LCD_BEFORE_FAILED") end
+    end
     if not do_boot and frame==500 then
         local ok=pcall(function()
             local keyport=assert(ports[":COL.14"])
