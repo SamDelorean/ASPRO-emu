@@ -5,45 +5,20 @@ local ports=machine.ioport.ports
 local expected=AP07_EXPECTED_HOLD
 local do_boot=AP07_BOOT_MODE==1
 local frame=0
--- MAME reloads the autoboot script after machine:soft_reset(). Persist
--- the one-time switch inside this campaign's unique private directory,
--- otherwise every reload resets again while only ~15 SCI bytes arrived.
-local switch_file="ap07_bootstrap_soft_reset_once.flag"
+-- Bootstrap selection happens at machine_reset, before CPU execution,
+-- exclusively because the private campaign staged payload0_pro.bin.
+-- The observer NEVER changes DIP switches or soft-resets the emulator.
 local switched=false
-if do_boot then
-    local previous=io.open(switch_file,"rb")
-    if previous then
-        previous:close()
-        switched=true
-    end
-end
 local function log(msg)
     local f=assert(io.open("observations.log","a"))
     f:write("AP07_"..msg.."\n")
     f:close()
 end
-local function modefield()
-    local port=assert(ports[":BOOTSTRAP_MODE"])
-    for _,f in pairs(port.fields) do
-        if f.mask==1 then return f end
-    end
-    error("bootstrap mode field missing")
-end
-local field=modefield()
 emu.register_frame_done(function()
     frame=frame+1
     if frame==2 and not switched then
         switched=true
-        if do_boot then
-            field:set_value(1)
-            -- Write before resetting; a fresh Lua VM must observe this
-            -- marker and must not schedule another soft reset.
-            local once=assert(io.open(switch_file,"wb"))
-            once:write("BOOTSTRAP_SELECTED_ONCE\n")
-            assert(once:close())
-            log("SELECT_BOOTSTRAP")
-            machine:soft_reset()
-        else log("NORMAL_DEFAULT") end
+        log(do_boot and "BOOTSTRAP_PRESELECTED_BY_PRIVATE_PAYLOAD" or "NORMAL_DEFAULT")
     end
     if frame==80 then
         local ok,pc=pcall(function()
