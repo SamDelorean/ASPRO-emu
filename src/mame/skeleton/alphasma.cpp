@@ -106,6 +106,7 @@ protected:
     virtual void machine_reset() override;
 private:
     uint8_t pro_port_a_r();
+    void pro_port_a_w(uint8_t data);
     void pro_port_d_w(uint8_t data);
     void pc_clock_rising(bool data);
     void pc_set2_byte(uint8_t data);
@@ -119,6 +120,10 @@ private:
     bool pc_connected() const { return BIT(m_pc_connected->read(), 0); }
     required_ioport m_pc_connected;
     required_ioport m_bootstrap_mode;
+    // Observation only: decodes real Pro PA7 LCD0 strobes, never writes LCD.
+    uint8_t m_ap07_lcd_high = 0;
+    uint8_t m_ap07_lcd_high_rs = 0;
+    bool m_ap07_lcd_half = false;
     uint16_t m_pc_frame = 0;
     uint8_t m_pc_frame_bits = 0;
     bool m_pc_set2_break = false;
@@ -172,6 +177,7 @@ void aspro_send_state::aspro_send(machine_config &config)
 {
     alphasmart(config); // Pro memory map / LCD / keyboard / NVRAM UNCHANGED.
     m_maincpu->in_pa_callback().set(FUNC(aspro_send_state::pro_port_a_r));
+    m_maincpu->out_pa_callback().set(FUNC(aspro_send_state::pro_port_a_w));
     m_maincpu->out_pd_callback().set(FUNC(aspro_send_state::pro_port_d_w));
 }
 
@@ -194,6 +200,9 @@ void aspro_send_state::machine_reset()
     alphasmart_state::machine_reset();
     m_pc_frame = 0;
     m_pc_frame_bits = 0;
+    m_ap07_lcd_high = 0;
+    m_ap07_lcd_high_rs = 0;
+    m_ap07_lcd_half = false;
     pc_keyboard_reset();
     send_sink_end();
     m_pc_session_connected = false;
@@ -265,6 +274,37 @@ uint8_t aspro_send_state::pro_port_a_r()
     if (pc_connected())
         data |= 0x05;
     return data;
+}
+
+void aspro_send_state::pro_port_a_w(uint8_t data)
+{
+    // A real HC11 PA7 rising edge enables Pro LCD controller 0.
+    // Capture the driven PD[5:2] nibble and RS from the Pro matrix.
+    // This is bus evidence, not fabricated screen output or ROM interception.
+    if (BIT(m_bootstrap_mode->read(), 0) && BIT(data, 7) && !BIT(m_port_a, 7)
+        && !BIT(m_matrix[1], 2))
+    {
+        const uint8_t rs = BIT(m_matrix[1], 1);
+        const uint8_t nibble = (m_port_d >> 2) & 0x0f;
+        if (!m_ap07_lcd_half)
+        {
+            m_ap07_lcd_high = nibble << 4;
+            m_ap07_lcd_high_rs = rs;
+            m_ap07_lcd_half = true;
+        }
+        else
+        {
+            const uint8_t value = m_ap07_lcd_high | nibble;
+            if (rs == m_ap07_lcd_high_rs)
+                logerror("ASPRO_AP07_LCD0_BYTE rs=%u value=%02X\\n",
+                    unsigned(rs), unsigned(value));
+            else
+                logerror("ASPRO_AP07_LCD0_RS_MISMATCH high=%u low=%u\\n",
+                    unsigned(m_ap07_lcd_high_rs), unsigned(rs));
+            m_ap07_lcd_half = false;
+        }
+    }
+    alphasmart_state::port_a_w(data);
 }
 
 void aspro_send_state::pro_port_d_w(uint8_t data)
