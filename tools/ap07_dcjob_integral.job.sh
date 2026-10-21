@@ -25,8 +25,10 @@ finish() {
 }
 trap finish EXIT
 # Strictly known local paths, no find/ls/pwd or ad hoc Commander probes.
-[[ -d "$ASPRO/.git" && -f "$ASPRO/tools/ap07_run_once.sh" ]] ||
-    { REASON=missing_aspro_checkout; exit 20; }
+# A valid Git worktree may have .git as a FILE. Fetch before checking the
+# AP07 script, because an AP06 checkout does not contain newer AP07 files.
+git -C "$ASPRO" rev-parse --is-inside-work-tree >/dev/null 2>&1 ||
+    { REASON=missing_aspro_worktree; exit 20; }
 [[ -f "$MAME/makefile" ]] ||
     { REASON=missing_read_only_mame_reference; exit 20; }
 [[ "$(git -C "$ASPRO" remote get-url origin)" == *SamDelorean/ASPRO-emu* ]] ||
@@ -40,6 +42,15 @@ git -C "$ASPRO" fetch --no-tags origin "$BRANCH" ||
     { REASON=fetch_aspro_failed; exit 22; }
 git -C "$ASPRO" merge --ff-only FETCH_HEAD ||
     { REASON=non_fast_forward_checkout; exit 22; }
+[[ -f "$ASPRO/tools/ap07_run_once.sh" ]] ||
+    { REASON=ap07_script_missing_after_sync; exit 23; }
+for source in "$ASPRO/tools/ap07_run_once.sh" "$ASPRO/tools/build_send_diag.sh"; do
+    bash -n "$source" || { REASON=bad_bash_syntax; exit 23; }
+done
+for source in "$ASPRO/tools/ap07_campaign.py" "$ASPRO/tools/ap07_patch_d0_cpu.py" "$ASPRO/tools/ap07_assemble_payload0.py" "$ASPRO/tools/ap07_static_campaign.py"; do
+    PYTHONPYCACHEPREFIX="$RESULT_DIR/pycache" python3 -m py_compile "$source" ||
+        { REASON=bad_python_syntax; exit 23; }
+done
 STATUS=LAUNCHING_INDEPENDENT_ASPRO_DIAG
 REASON=AP07_ONE_SHOT
 bash "$ASPRO/tools/ap07_run_once.sh" "$MAME" 3
