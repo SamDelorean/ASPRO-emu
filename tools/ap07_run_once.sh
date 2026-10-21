@@ -20,7 +20,7 @@ finalize() {
     trap - EXIT
     printf 'AP07_JOB_EXIT=%s\n' "$rc" > "$OUT/final.status"
     printf 'AP07_SCI=8N1_CPU_BEHAVIORAL_MODEL; SILICON_BOOT_ROM_UNVERIFIED\n' >> "$OUT/final.status"
-    for name in d0_datasheet_tests.log payload_static_tests.log build.log \
+    for name in d0_datasheet_tests.log payload_static_tests.log sci_cpp_smoke.log build.log \
                 campaign.latest.json final.status; do
         [[ -s "$OUT/$name" ]] || continue
         rclone copyto "$OUT/$name" "$REMOTE/ASPRO_AP07_$name" \
@@ -58,6 +58,7 @@ rm -f -- "$OUT/campaign.latest.json" "$OUT/final.status" "$OUT/screenshots.txt"
 echo AP07_INTEGRAL_INCREMENT_START
 python3 tools/ap07_static_selftest.py > "$OUT/d0_datasheet_tests.log" 2>&1
 python3 tools/ap07_static_campaign.py > "$OUT/payload_static_tests.log" 2>&1
+python3 tools/ap07_sci_cpp_smoke.py > "$OUT/sci_cpp_smoke.log" 2>&1
 HOLD=$(awk -F= '$1=="hold_pc" {gsub(/\$/,"",$2); print $2}' "$OUT/payload0/manifest.txt")
 [[ "$HOLD" =~ ^[[:xdigit:]]{4}$ ]] || { echo AP07_BLOCKED_INVALID_HOLD_PC; exit 5; }
 
