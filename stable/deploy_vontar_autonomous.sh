@@ -8,9 +8,8 @@ BASE="$HOME/Projects/alphasmart"
 STAGE="$BASE/aspro-stable-pack"
 MAME="$HOME/projects/mame-as2k-stable-arm64"
 PRIV="$HOME/.local/share/alphasmart/private/aspro"
-REPORT="googledrive:AS2K_TEMP/DEPLOY_20261021"
-RESTRICTED="googledrive:ALPHASMART/Alphasmart Pro/ASPRO_STABLE_PRIVATE"
-CPU="googledrive:AS2K_TEMP/ASPRO_STABLE_BUILD_20261021"
+# Proprietary assets and tested CPU sources are seeded securely by Commander
+# from the already-verified private Drive archive. No remote rclone needed.
 REF="35fdf9bc72f2501f30dad5c7fffd2182c5b04c0c"
 mkdir -p "$STAGE/stable" "$PRIV/logs" "$PRIV/roms" "$PRIV/payload" "$PRIV/binaries/stable-aarch64"
 LOG="$PRIV/logs/vontar-stable.log"
@@ -29,9 +28,6 @@ finish(){
     trap - EXIT
     restore || :
     printf 'TASK=%s\nSTEP=%s\nEXIT=%s\n' "$TAG" "$STEP" "$rc" >"$PRIV/logs/vontar-stable.status"
-    for f in "$PRIV/logs/vontar-stable.status" "$LOG"; do
-        rclone copyto "$f" "$REPORT/$TAG-$(basename "$f")" --retries 1 --timeout 90s || echo "Report upload failed: $f"
-    done
     exit "$rc"
 }
 trap finish EXIT
@@ -40,15 +36,7 @@ sudo -n true || { echo NO_SUDO; exit 2; }
 test -f "$MAME/makefile" && test -f "$MAME/src/mame/skeleton/alphasma.cpp" || {
     echo "Missing previously built AS2K MAME tree"; exit 2;
 }
-STEP=WAIT_AS2K_AUTONOMOUS
-# The first autonomous AS2K PC build owns this MAME tree until it exits.
-for counter in $(seq 1 180); do
-    if ! kill -0 86532 2>/dev/null; then break; fi
-    sleep 20
-done
-if kill -0 86532 2>/dev/null; then
-    echo "BLOCKED AS2K core update still running after one hour"; exit 3
-fi
+# Called after AS2K resumed build is finished by the consolidated launcher.
 STEP=FETCH_STABLE_SOURCE
 for name in alphasma.cpp aspro_ui.py aspro_session.py install_stable.sh; do
     curl -fLsS --retry 2 --connect-timeout 20 \
@@ -57,10 +45,9 @@ for name in alphasma.cpp aspro_ui.py aspro_session.py install_stable.sh; do
 done
 python3 -m py_compile "$STAGE/stable/aspro_ui.py" "$STAGE/stable/aspro_session.py"
 STEP=PRIVATE_ASSETS
-for f in firmware.bin ks0066_f05.bin; do
-    rclone copyto "$RESTRICTED/roms/$f" "$PRIV/roms/$f" --retries 2 --timeout 90s
+for f in "$PRIV/roms/firmware.bin" "$PRIV/roms/ks0066_f05.bin" "$PRIV/payload/payload0_pro.bin"; do
+    test -s "$f" && test ! -L "$f" || { echo "BLOCKED private staging missing: $f"; exit 5; }
 done
-rclone copyto "$RESTRICTED/payload/payload0_pro.bin" "$PRIV/payload/payload0_pro.bin" --retries 2 --timeout 90s
 python3 - "$PRIV" <<'PY'
 from pathlib import Path
 import sys,hashlib
@@ -82,7 +69,8 @@ for f in src/mame/skeleton/alphasma.cpp src/devices/cpu/mc68hc11/mc68hc11.cpp sr
     cp -p "$MAME/$f" "$backups/$f"
 done
 for name in mc68hc11.cpp mc68hc11.h; do
-    rclone copyto "$CPU/$name" "$STAGE/stable/$name" --retries 2 --timeout 90s
+    test -s "$STAGE/stable/$name" && test ! -L "$STAGE/stable/$name" ||
+        { echo "BLOCKED verified AP07 D0 CPU missing: $name"; exit 5; }
     cp "$STAGE/stable/$name" "$MAME/src/devices/cpu/mc68hc11/$name"
 done
 grep -q 'diag_bootstrap_tx_bit' "$MAME/src/devices/cpu/mc68hc11/mc68hc11.cpp" || {
@@ -119,7 +107,5 @@ sudo -n sh "$STAGE/stable/install_stable.sh" "$MAME/aspro"
 cmp "$MAME/aspro" /usr/local/libexec/aspro/aspro-bin
 cp -p "$MAME/aspro" "$PRIV/binaries/stable-aarch64/aspro-bin"
 sha256sum "$PRIV/binaries/stable-aarch64/aspro-bin" > "$PRIV/binaries/stable-aarch64/aspro-bin.sha256"
-rclone copyto "$PRIV/binaries/stable-aarch64/aspro-bin" "$RESTRICTED/binaries/stable-aarch64/aspro-bin" --retries 2 --timeout 180s
-rclone copyto "$PRIV/binaries/stable-aarch64/aspro-bin.sha256" "$RESTRICTED/binaries/stable-aarch64/aspro-bin.sha256" --retries 1
 STEP=PASS
-echo "ASPRO_STABLE_VONTAR_PASS: ROM, bootstrap, PC core, GTK launcher, exact binary identity"
+echo "ASPRO_STABLE_VONTAR_PASS: ROM, bootstrap, PC core, GTK launcher, exact binary identity; local private backups"
