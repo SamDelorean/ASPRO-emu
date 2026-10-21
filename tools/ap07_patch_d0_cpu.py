@@ -98,6 +98,8 @@ void mc68hc11d0_device::diag_bootstrap_begin()
 	m_diag_sci_count = 0;
 	m_diag_sci_echo_count = 0;
 	m_diag_sci_echo_last = 0;
+	m_diag_sci_tx_bit = 0;
+	m_diag_sci_tx_pending = false;
 	m_diag_sci_shift = 0;
 	m_diag_sci_bit = 0;
 	m_diag_sci_idle = 0;
@@ -173,10 +175,26 @@ void mc68hc11d0_device::diag_bootstrap_rx_bit(bool rxd)
 		logerror("ASPRO_AP07_SCI_RX index=%u byte=%02X\n",
 			unsigned(m_diag_sci_count - 1), unsigned(value));
 	}
+	// Queue one physical TXD 8N1 reply, not just a counter/log echo.
 	m_diag_sci_echo_last = value;
+	m_diag_sci_tx_bit = 0;
+	m_diag_sci_tx_pending = true;
+}
+
+bool mc68hc11d0_device::diag_bootstrap_tx_bit()
+{
+	if (!m_diag_bootstrap || !m_diag_sci_tx_pending)
+		return true; // UART idle HIGH
+	const uint8_t bit = m_diag_sci_tx_bit++;
+	if (bit == 0)
+		return false; // START bit
+	if (bit <= 8)
+		return BIT(m_diag_sci_echo_last, bit - 1); // D0 TXD, LSB first
+	m_diag_sci_tx_pending = false; // STOP bit HIGH
 	++m_diag_sci_echo_count;
-	logerror("ASPRO_AP07_SCI_ECHO index=%u byte=%02X\n",
-		unsigned(m_diag_sci_echo_count - 1), unsigned(value));
+	logerror("ASPRO_AP07_SCI_TX_ECHO_COMPLETE index=%u byte=%02X\n",
+		unsigned(m_diag_sci_echo_count - 1), unsigned(m_diag_sci_echo_last));
+	return true;
 }
 
 '''
@@ -189,6 +207,7 @@ DONOR_D0 = r'''	// Bounded diagnostic bootstrap support for the AS2000 takeover 
 	void diag_bootstrap_load(const uint8_t *data, uint16_t size, uint16_t address = 0x0040);
 	void diag_bootstrap_begin();
 	void diag_bootstrap_rx_bit(bool rxd);
+	bool diag_bootstrap_tx_bit();
 	bool diag_bootstrap_done() const { return m_diag_sci_done; }
 	bool diag_bootstrap_error() const { return m_diag_sci_bad; }
 	uint16_t diag_bootstrap_rx_count() const { return m_diag_sci_count; }
@@ -213,6 +232,8 @@ private:
 	uint16_t m_diag_sci_count = 0;
 	uint16_t m_diag_sci_echo_count = 0;
 	uint8_t m_diag_sci_echo_last = 0;
+	uint8_t m_diag_sci_tx_bit = 0;
+	bool m_diag_sci_tx_pending = false;
 	uint8_t m_diag_sci_shift = 0;
 	uint8_t m_diag_sci_bit = 0;
 	uint8_t m_diag_sci_idle = 0;
@@ -239,7 +260,7 @@ def patch_bootstrap(h, c, replace, donor):
     c = replace(c, anchor,
                 "\tblock(base + 0x3c, base + 0x3c).rw(FUNC(mc68hc11d0_device::hprio_r), FUNC(mc68hc11d0_device::hprio_w)); // HPRIO\n" + anchor, "D0 HPRIO")
     c = replace(c, "void mc68hc11d0_device::device_reset()",
-                "void mc68hc11d0_device::device_start()\n{\n\tmc68hc11_cpu_device::device_start();\n\tsave_item(NAME(m_hprio));\n\tsave_item(NAME(m_diag_bootstrap));\n\tsave_item(NAME(m_diag_sci_ram));\n\tsave_item(NAME(m_diag_sci_count));\n\tsave_item(NAME(m_diag_sci_echo_count));\n\tsave_item(NAME(m_diag_sci_echo_last));\n\tsave_item(NAME(m_diag_sci_shift));\n\tsave_item(NAME(m_diag_sci_bit));\n\tsave_item(NAME(m_diag_sci_idle));\n\tsave_item(NAME(m_diag_sci_receiving));\n\tsave_item(NAME(m_diag_sci_synced));\n\tsave_item(NAME(m_diag_sci_done));\n\tsave_item(NAME(m_diag_sci_bad));\n}\n\nvoid mc68hc11d0_device::device_reset()", "D0 start")
+                "void mc68hc11d0_device::device_start()\n{\n\tmc68hc11_cpu_device::device_start();\n\tsave_item(NAME(m_hprio));\n\tsave_item(NAME(m_diag_bootstrap));\n\tsave_item(NAME(m_diag_sci_ram));\n\tsave_item(NAME(m_diag_sci_count));\n\tsave_item(NAME(m_diag_sci_echo_count));\n\tsave_item(NAME(m_diag_sci_echo_last));\n\tsave_item(NAME(m_diag_sci_tx_bit));\n\tsave_item(NAME(m_diag_sci_tx_pending));\n\tsave_item(NAME(m_diag_sci_shift));\n\tsave_item(NAME(m_diag_sci_bit));\n\tsave_item(NAME(m_diag_sci_idle));\n\tsave_item(NAME(m_diag_sci_receiving));\n\tsave_item(NAME(m_diag_sci_synced));\n\tsave_item(NAME(m_diag_sci_done));\n\tsave_item(NAME(m_diag_sci_bad));\n}\n\nvoid mc68hc11d0_device::device_reset()", "D0 start")
     c = replace(c, "\tm_port_data[0] &= 0x8f;\n\tddr_w<0>(0x70);\n}",
                 "\tm_port_data[0] &= 0x8f;\n\tddr_w<0>(0x70);\n\tm_hprio = m_diag_bootstrap ? 0xc0 : 0x00;\n}", "D0 reset")
     c = replace(c, "void mc68hc11e1_device::device_reset()",
@@ -269,6 +290,7 @@ def extend_existing_d0(h, c, replace):
     api=(
         "\tvoid diag_bootstrap_begin();\n"
         "\tvoid diag_bootstrap_rx_bit(bool rxd);\n"
+        "\tbool diag_bootstrap_tx_bit();\n"
         "\tbool diag_bootstrap_done() const { return m_diag_sci_done; }\n"
         "\tbool diag_bootstrap_error() const { return m_diag_sci_bad; }\n"
         "\tuint16_t diag_bootstrap_rx_count() const { return m_diag_sci_count; }\n"
@@ -282,6 +304,8 @@ def extend_existing_d0(h, c, replace):
         "\tuint16_t m_diag_sci_count = 0;\n"
         "\tuint16_t m_diag_sci_echo_count = 0;\n"
         "\tuint8_t m_diag_sci_echo_last = 0;\n"
+        "\tuint8_t m_diag_sci_tx_bit = 0;\n"
+        "\tbool m_diag_sci_tx_pending = false;\n"
         "\tuint8_t m_diag_sci_shift = 0;\n"
         "\tuint8_t m_diag_sci_bit = 0;\n"
         "\tuint8_t m_diag_sci_idle = 0;\n"
@@ -304,7 +328,8 @@ def extend_existing_d0(h, c, replace):
               "existing AS2K base CPU WAIT handler")
     savers="".join("\n\tsave_item(NAME("+n+"));" for n in (
         "m_diag_sci_ram","m_diag_sci_count","m_diag_sci_echo_count",
-        "m_diag_sci_echo_last","m_diag_sci_shift","m_diag_sci_bit",
+        "m_diag_sci_echo_last","m_diag_sci_tx_bit","m_diag_sci_tx_pending",
+        "m_diag_sci_shift","m_diag_sci_bit",
         "m_diag_sci_idle","m_diag_sci_receiving","m_diag_sci_synced",
         "m_diag_sci_done","m_diag_sci_bad"))
     if "\tsave_item(NAME(m_diag_bootstrap));" in c:
