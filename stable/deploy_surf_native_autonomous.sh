@@ -14,7 +14,7 @@ PRIVATE="$HOME/.local/share/alphasmart/private/aspro"
 LOG="$PRIVATE/logs/surf-native-build-install.log"
 STATUS="$PRIVATE/logs/surf-native-build-install.status"
 TARGET=/usr/local/libexec/aspro/aspro-bin
-REF=f2575ccda12cb1313c999cd0b19ff8bf8c9a1260
+REF=11cf0563daa46db81d9d4ae7cc02cbeb4eaf239f
 mkdir -p "$APP" "$CPU" "$PRIVATE/logs" "$PRIVATE/binaries/stable-armv7" "$PREFIX/backup"
 exec >"$LOG" 2>&1
 STEP=PREFLIGHT
