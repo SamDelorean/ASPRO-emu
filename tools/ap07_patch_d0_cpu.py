@@ -360,7 +360,32 @@ if __name__ == "__main__":
             or marker.get("patched_blobs")!=list(source_ids)
             or marker.get("authentic_sci") is not False):
             p.error("modified CPU files diverge from approved ASPRO SCI hashes")
-        print(json.dumps({"status":"SCI_PATCH_ALREADY_VERIFIED","sha":source_ids}))
+        if ("diagnostic_bootstrap_wait_for_serial" in h and
+            "diagnostic_bootstrap_wait_for_serial" in c):
+            print(json.dumps({"status":"SCI_PATCH_ALREADY_VERIFIED","sha":source_ids}))
+            raise SystemExit(0)
+        # Recovery for the exact first AP07 source revision that reached
+        # GCC but accessed five BASE-private CPU fields from the D0 subclass.
+        # Rebuild from preserved, hash-verified *ASPRO* originals rather than
+        # layering partial edits on compiled source.
+        backup=tree/".ap07-cpu-original"
+        original_h=(backup/"mc68hc11.h").read_text()
+        original_c=(backup/"mc68hc11.cpp").read_text()
+        if [blob(original_h),blob(original_c)]!=marker.get("source_blobs"):
+            p.error("AP07 pristine D0 backup hash mismatch; refuse upgrade")
+        if marker.get("model")=="REUSED_AS2K_D0_ADDED_SCI":
+            new_h,new_c=extend_existing_d0(original_h,original_c,strict_replace)
+        elif marker.get("model")=="PINNED_UNPATCHED_D0_PLUS_SCI":
+            new_h,new_c=patch_bootstrap(original_h,original_c,strict_replace,False)
+        else:
+            p.error("unknown AP07 source model for guarded SCI upgrade")
+        hpath.write_text(new_h)
+        cpath.write_text(new_c)
+        marker["patched_blobs"]=[blob(new_h),blob(new_c)]
+        marker["revision"]="BASE_WAIT_ACCESS_FIX"
+        marker_path.write_text(json.dumps(marker,indent=2)+"\\n")
+        print(json.dumps({"status":"AP07_SCI_BASE_WAIT_UPGRADED",
+                          "patched_blobs":marker["patched_blobs"]}))
         raise SystemExit(0)
     if marker_path.exists():
         p.error("stale AP07 CPU marker without SCI")
