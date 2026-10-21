@@ -236,6 +236,63 @@ def patch_bootstrap(h, c, replace, donor):
                 DONOR_ENTRY + "void mc68hc11_cpu_device::execute_set_input(", "bootstrap execution")
     return h, c
 
+def extend_existing_d0(h, c, replace):
+    """Reuse the already-patched AS2K D0 CPU exported into ASPRO.
+    Never reinstall HPRIO, RAM loader, or PC hook; add SCI RX only.
+    """
+    begin=h.index("class mc68hc11d0_device :")
+    end=h.index("\nclass mc68hc11e1_device",begin)
+    d0=h[begin:end]
+    required=(
+        "void diag_bootstrap_load(", "void set_diag_bootstrap(bool",
+        "uint8_t m_hprio;", "bool m_diag_bootstrap"
+    )
+    if not all(key in d0 for key in required):
+        raise ValueError("AS2K donor D0 public ABI is not recognized")
+    if ("void mc68hc11d0_device::diag_bootstrap_load(" not in c
+        or "void mc68hc11d0_device::device_start()" not in c
+        or "diagnostic_bootstrap_entry(" not in c
+        or "HC11D0 HPRIO" not in c):
+        raise ValueError("AS2K donor D0 runtime implementation unrecognized")
+    api=(
+        "\tvoid diag_bootstrap_begin();\n"
+        "\tvoid diag_bootstrap_rx_bit(bool rxd);\n"
+        "\tbool diag_bootstrap_done() const { return m_diag_sci_done; }\n"
+        "\tbool diag_bootstrap_error() const { return m_diag_sci_bad; }\n"
+        "\tuint16_t diag_bootstrap_rx_count() const { return m_diag_sci_count; }\n"
+        "\tuint16_t diag_bootstrap_echo_count() const { return m_diag_sci_echo_count; }\n"
+        "\tuint8_t diag_bootstrap_echo_last() const { return m_diag_sci_echo_last; }\n"
+    )
+    old="\tvoid diag_bootstrap_load(const uint8_t *data, uint16_t size, uint16_t address = 0x0040);"
+    h=replace(h,old,old+"\n"+api,"existing D0 public SCI methods")
+    fields=(
+        "\tuint8_t m_diag_sci_ram[192]{};\n"
+        "\tuint16_t m_diag_sci_count = 0;\n"
+        "\tuint16_t m_diag_sci_echo_count = 0;\n"
+        "\tuint8_t m_diag_sci_echo_last = 0;\n"
+        "\tuint8_t m_diag_sci_shift = 0;\n"
+        "\tuint8_t m_diag_sci_bit = 0;\n"
+        "\tuint8_t m_diag_sci_idle = 0;\n"
+        "\tbool m_diag_sci_receiving = false;\n"
+        "\tbool m_diag_sci_synced = false;\n"
+        "\tbool m_diag_sci_done = false;\n"
+        "\tbool m_diag_sci_bad = false;\n"
+    )
+    h=replace(h,"\tuint8_t m_hprio;","\tuint8_t m_hprio;\n"+fields,
+              "existing D0 private SCI state")
+    c=replace(c,"void mc68hc11e1_device::device_reset()",
+              DONOR_SCI+"void mc68hc11e1_device::device_reset()",
+              "existing D0 SCI receiver implementation")
+    savers="".join("\n\tsave_item(NAME("+n+"));" for n in (
+        "m_diag_sci_ram","m_diag_sci_count","m_diag_sci_echo_count",
+        "m_diag_sci_echo_last","m_diag_sci_shift","m_diag_sci_bit",
+        "m_diag_sci_idle","m_diag_sci_receiving","m_diag_sci_synced",
+        "m_diag_sci_done","m_diag_sci_bad"))
+    c=replace(c,"\tsave_item(NAME(m_diag_bootstrap));",
+              "\tsave_item(NAME(m_diag_bootstrap));"+savers,
+              "existing D0 save state")
+    return h,c
+
 # ASPRO AP-07: apply AS2K's bounded D0 post-transfer bootstrap patch ONLY
 # to independently exported ASPRO-emu/build/send-mame sources.
 if __name__ == "__main__":
@@ -262,32 +319,49 @@ if __name__ == "__main__":
         return hashlib.sha1(b"blob "+str(len(b)).encode()+b"\0"+b).hexdigest()
     source_ids=(blob(h),blob(c))
     marker_path=tree/".ap07-cpu-marker.json"
-    if "diag_bootstrap_load" in h or "diag_bootstrap_load" in c:
-        if (not marker_path.is_file() or
-            "diag_bootstrap_load" not in h or "diag_bootstrap_load" not in c or
-            "diag_bootstrap_rx_bit" not in h or "diag_bootstrap_rx_bit" not in c or
-            "HC11D0 HPRIO" not in c):
-            p.error("partial or unmarked CPU bootstrap patch")
+    def strict_replace(source, old, new, label):
+        if source.count(old)!=1:
+            raise ValueError(label+" anchor count "+str(source.count(old)))
+        return source.replace(old,new,1)
+
+    marker_path=tree/".ap07-cpu-marker.json"
+    has_bootloader="diag_bootstrap_load" in h and "diag_bootstrap_load" in c
+    has_sci="diag_bootstrap_rx_bit" in h or "diag_bootstrap_rx_bit" in c
+    if has_sci:
+        if (not marker_path.is_file()
+            or "diag_bootstrap_rx_bit" not in h
+            or "diag_bootstrap_rx_bit" not in c):
+            p.error("partial/unmarked SCI patch")
         marker=json.loads(marker_path.read_text())
         if (marker.get("feature")!="AP07_SCI_8N1_D0P"
             or marker.get("patched_blobs")!=list(source_ids)
             or marker.get("authentic_sci") is not False):
-            p.error("patched D0 source hashes diverged from ASPRO marker")
-        print(json.dumps({"status":"ALREADY_PATCHED_VERIFIED","patched_blobs":source_ids}))
+            p.error("modified CPU files diverge from approved ASPRO SCI hashes")
+        print(json.dumps({"status":"SCI_PATCH_ALREADY_VERIFIED","sha":source_ids}))
         raise SystemExit(0)
     if marker_path.exists():
-        p.error("stale AP07 CPU marker with missing patch")
-    expected_h="a7248de563b572aa586b28a8493ddd087dfbb400"
-    expected_c="375c6e1c2a2f74912661da8dc659e23dfcb44f02"
-    if source_ids != (expected_h,expected_c):
-        p.error("CPU files are not pinned MAME D0 source; refuse blind patch: "+str(source_ids))
-    def strict_replace(s, old, new, label):
-        if s.count(old)!=1:
-            raise ValueError(label+" anchor count "+str(s.count(old)))
-        return s.replace(old,new,1)
-    new_h,new_c=patch_bootstrap(h,c,strict_replace,False)
+        p.error("stale AP07 CPU marker without SCI")
+    existing_mame_marker=json.loads((tree/".aspro-send-source.json").read_text())
+    if (existing_mame_marker.get("feature")!="AP06_PC_SEND"
+        or existing_mame_marker.get("canonical_upstream")
+            !="c4e48388ca620472643110db2941ce70aa5f3c07"):
+        p.error("independent AP06 MAME source identity not verified")
+    if has_bootloader:
+        # The T640 MAME donor *already* includes the tested AS2K
+        # post-transfer entry. Reuse it, add only the D0 SCI path.
+        if existing_mame_marker.get("source_head")!="a4b99b1a700a1d70b93a798fe7833e4cae28c137":
+            p.error("unexpected existing D0 donor revision")
+        new_h,new_c=extend_existing_d0(h,c,strict_replace)
+        model="REUSED_AS2K_D0_ADDED_SCI"
+    else:
+        expected_h="a7248de563b572aa586b28a8493ddd087dfbb400"
+        expected_c="375c6e1c2a2f74912661da8dc659e23dfcb44f02"
+        if source_ids != (expected_h,expected_c):
+            p.error("unrecognized fresh D0 CPU source: "+str(source_ids))
+        new_h,new_c=patch_bootstrap(h,c,strict_replace,False)
+        model="PINNED_UNPATCHED_D0_PLUS_SCI"
     if new_h==h or new_c==c:
-        p.error("no changes")
+        p.error("no CPU changes")
     # Keep independent originals for rollback; never touch donor tree.
     backup=tree/".ap07-cpu-original"
     backup.mkdir(exist_ok=True)
@@ -299,6 +373,6 @@ if __name__ == "__main__":
     hpath.write_text(new_h); cpath.write_text(new_c)
     marker={"feature":"AP07_SCI_8N1_D0P","source_blobs":list(source_ids),
             "patched_blobs":[blob(new_h),blob(new_c)],
-            "cpu_patched":True,"authentic_sci":False,"uart_8n1_model":True}
+            "cpu_patched":True,"model":model,"authentic_sci":False,"uart_8n1_model":True}
     (tree/".ap07-cpu-marker.json").write_text(json.dumps(marker,indent=2)+"\n")
     print(json.dumps(marker))
