@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PRIVATE = ROOT / "build" / "send-mame"
 ARCHIVES = PRIVATE / "build" / "linux_gcc" / "bin" / "x64" / "Release"
 PATTERN = re.compile(r"(?P<archive>lib[a-z0-9_]+\.a)\((?P<member>[a-z0-9_]+)\.o\)")
-CORRUPTION = ("bad reloc symbol index", "has a section extending past end of file")
+CORRUPTION = ("bad reloc symbol index", "bad reloc offset", "has a section extending past end of file")
 
 
 def main() -> int:
