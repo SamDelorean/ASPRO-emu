@@ -26,8 +26,34 @@ fi
 python3 "$ROOT/tools/ap07_patch_d0_cpu.py" --tree "$TREE"
 for name in make g++ pkg-config; do command -v "$name" >/dev/null || { echo "BLOCKED missing $name"; exit 4; }; done
 pkg-config --exists sdl2 SDL2_ttf fontconfig || { echo "BLOCKED missing MAME SDL2 build dependencies"; exit 4; }
-CCACHE_DISABLE=1 MAKEFLAGS= make -C "$TREE" -j"$JOBS" TARGET=mame SUBTARGET=asprodiag \
-    SOURCES=src/mame/skeleton/alphasma.cpp REGENIE=1 TOOLS=0 USE_QTDEBUG=0
+# One targeted repair is permitted only after the exact observed libemu
+# archive relocation-corruption signature. Never clean/rebuild the entire
+# AS2K donor, and never remove unrelated ASPRO objects or libraries.
+build_mame() {
+    CCACHE_DISABLE=1 MAKEFLAGS= make -C "$TREE" -j"$JOBS" TARGET=mame SUBTARGET=asprodiag \
+        SOURCES=src/mame/skeleton/alphasma.cpp REGENIE=1 TOOLS=0 USE_QTDEBUG=0
+}
+FIRST="$TREE/.ap07-first-link.log"
+if build_mame >"$FIRST" 2>&1; then
+    cat "$FIRST"
+else
+    cat "$FIRST"
+    if grep -Fq 'libemu.a(dvtext.o): bad reloc symbol index' "$FIRST"; then
+        OBJ="$TREE/linux_gcc/obj/x64/Release/src/emu/dvtext.o"
+        LIB="$TREE/linux_gcc/bin/x64/Release/libemu.a"
+        if [[ ! -f "$OBJ" || ! -f "$LIB" || -L "$OBJ" || -L "$LIB" ]]; then
+            echo "AP07_BLOCKED_DVTEXT_EXPECTED_PRIVATE_FILES_MISSING" >&2
+            exit 6
+        fi
+        echo "AP07_REPAIR_DVTEXT_CORRUPT_ARCHIVE_ONLY" >&2
+        sha256sum "$OBJ" "$LIB" > "$TREE/.ap07-dvtext-pre-repair.sha256"
+        rm -- "$OBJ" "$LIB"
+        build_mame
+    else
+        echo "AP07_BLOCKED_UNRECOGNIZED_MAME_BUILD_ERROR" >&2
+        exit 7
+    fi
+fi
 test -f "$TREE/asprodiag" && test -x "$TREE/asprodiag" && test ! -L "$TREE/asprodiag" || {
     echo "BLOCKED missing independent ASPRO send binary"; exit 5;
 }
