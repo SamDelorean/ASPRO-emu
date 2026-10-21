@@ -36,7 +36,7 @@ build_mame() {
 }
 FIRST="$TREE/.ap07-first-link.log"
 AP07_LINKED=0
-for attempt in 1 2 3 4 5 6; do
+for attempt in $(seq 1 24); do
     if build_mame >"$FIRST" 2>&1; then
         cat "$FIRST"
         AP07_LINKED=1
