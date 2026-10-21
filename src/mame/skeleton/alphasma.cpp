@@ -121,6 +121,7 @@ private:
     bool pc_connected() const { return BIT(m_pc_connected->read(), 0); }
     required_ioport m_pc_connected;
     required_ioport m_bootstrap_mode;
+    bool m_ap07_bootstrap_active = false;
     emu_timer *m_ap07_sci_timer = nullptr;
     std::array<uint8_t,192> m_ap07_sci_tx{};
     uint16_t m_ap07_sci_length = 0;
@@ -303,6 +304,7 @@ void aspro_send_state::machine_reset()
     emu_file file(std::string(machine().options().snapshot_directory()), OPEN_FLAG_READ);
     auto const payload_error = file.open("payload0_pro.bin");
     const bool selected = BIT(m_bootstrap_mode->read(), 0) || !payload_error;
+    m_ap07_bootstrap_active = selected;
     d0.set_diag_bootstrap(selected);
     if (selected)
     {
@@ -377,7 +379,7 @@ void aspro_send_state::pro_port_a_w(uint8_t data)
     // A real HC11 PA7 rising edge enables Pro LCD controller 0.
     // Capture the driven PD[5:2] nibble and RS from the Pro matrix.
     // This is bus evidence, not fabricated screen output or ROM interception.
-    if (BIT(m_bootstrap_mode->read(), 0) && BIT(data, 7) && !BIT(m_port_a, 7)
+    if (m_ap07_bootstrap_active && BIT(data, 7) && !BIT(m_port_a, 7)
         && !BIT(m_matrix[1], 2))
     {
         const uint8_t rs = BIT(m_matrix[1], 1);
