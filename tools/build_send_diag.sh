@@ -44,7 +44,7 @@ else
         # Force exactly ONE debugger source rebuild through MAME's own
         # generated makefile; never guess/remove arbitrary object paths.
         SRC="$TREE/src/emu/debug/dvtext.cpp"
-        LIB="$TREE/linux_gcc/bin/x64/Release/libemu.a"
+        LIB="$TREE/build/linux_gcc/bin/x64/Release/libemu.a"
         BACKUP="$TREE/.ap07-libemu-corrupt-preserved.a"
         if [[ ! -f "$SRC" || ! -f "$LIB" || -L "$SRC" || -L "$LIB" || -e "$BACKUP" ]]; then
             echo "AP07_BLOCKED_PRIVATE_DVTEXT_OR_LIBEMU_NOT_SAFE" >&2
