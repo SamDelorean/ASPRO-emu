@@ -56,7 +56,11 @@ def main() -> int:
     source = sources[0]
     # Archive name, member and source path are all obtained from actual
     # linker evidence and verified private tree membership.
-    sha = hashlib.sha256(archive.read_bytes()).hexdigest()
+    digest = hashlib.sha256()
+    with archive.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    sha = digest.hexdigest()
     backup_root = tree / ".ap07-corrupt-archives"
     if backup_root.is_symlink():
         p.error("unsafe archive-backup location")
