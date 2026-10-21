@@ -108,15 +108,24 @@ def main():
     from ap07_d0_bootstrap_contract import validate_payload
     validate_payload(payload)
     results=[launch(exe,a.rom,a.lcd_rom,payload,a.hold,mode) for mode in ("bootstrap","normal")]
-    combined={"increment":"AP07","status":"DYNAMIC_UNVERIFIED","authentic_sci_pass":False,
-              "bootstrap":results[0],"normal":results[1]}
-    (ROOT/"private/ap07/report.latest.json").write_text(json.dumps(combined,indent=2)+"\n")
+    post_sci_ok=(
+        results[0]["status"]=="POST_SCI_DIAG_CPU_LCD_BUS_PASS_VISUAL_PENDING"
+        and results[1]["status"]=="NORMAL_BOOT_PROCESS_OBSERVED_VISUAL_UNVERIFIED"
+    )
+    combined={
+        "increment":"AP07",
+        "status":("POST_SCI_DIAG_LCD_BUS_PASS_VISUAL_REVIEW_PENDING"
+                  if post_sci_ok else "DYNAMIC_UNVERIFIED"),
+        "post_sci_diagnostic_pass":post_sci_ok,
+        "visual_review_pass":False,
+        "authentic_sci_pass":False,
+        "bootstrap":results[0],
+        "normal":results[1],
+    }
+    (ROOT/"private/ap07/report.latest.json").write_text(
+        json.dumps(combined,indent=2)+"\n")
     print(json.dumps(combined,indent=2))
-    return 0 if (results[0]["cpu_hold_observed"] and results[1]["observer_complete"] and
-                 results[0]["post_sci_injection_seen"] and results[0]["lcd0_bus_pass"]
-                 and results[0]["snapshot_sha256"] is not None
-                 and results[1]["normal_key_a_down"] and results[1]["normal_key_a_up"]
-                 and results[1]["normal_lcd_changed"]) else 4
+    return 0 if post_sci_ok else 4
 
 if __name__=="__main__":
     raise SystemExit(main())
