@@ -27,6 +27,7 @@ PREAMBLE = r'''
 #include <cassert>
 #define logerror(...) std::fprintf(stderr, __VA_ARGS__)
 #define fatalerror(...) throw std::runtime_error("fatalerror")
+static inline bool BIT(unsigned v, unsigned i) { return ((v >> i) & 1U) != 0; }
 static constexpr uint8_t CC_X = 0x40, CC_I = 0x10, CC_S = 0x80;
 
 class mc68hc11_cpu_device {
