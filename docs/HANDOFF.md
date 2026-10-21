@@ -378,3 +378,57 @@ no se emuló instrucción a instrucción; se usó receptor SCI de
 comportamiento equivalente a la estrategia diagnóstica de AS2K.
 Nada modificado en AS2K, ASPRO-STABLE, DIAG-ROM-Pro u OS2K-Pro.
 No reabrir AP-07 diagnóstico sin nueva regresión o requisito concreto.
+
+
+## Surf — instrucción correctiva vinculante (21-oct-2026, 08:37 hora de México)
+
+**No compilar ASPRO para Surf desde T640.** El usuario lo había
+ordenado anteriormente y se reiteró tras fallar el build cruzado.
+El trabajo para Surf debe compilarse e instalarse **nativamente en la
+propia Microsoft Surface RT**, postmarketOS ARMv7/musl. T640 no es
+máquina de compilación para Surf. Commander de Surf deviceId
+`ae7a284a-68e1-49fc-bbd3-537674bc6a17`; respetar aprobación
+por intervención, máximo cinco llamadas autorizado en este tramo,
+sin polling de procesos.
+
+**Entorno real recuperado en Surf**:
+- MAME nativo existente
+  `/home/user/Projects/alphasmart/as2k-surf-native/sources/mame-as3k`;
+  AS2K fuente adyacente en `sources/AS2K-Emulator`.
+- Procedimiento histórico de Surf
+  `scripts/surface-native-build.sh`: ARMv7 con
+  `MAKEFLAGS=ARCHITECTURE=`, `PLATFORM=arm`, `NOASM=1`,
+  `FORCE_DRC_C_BACKEND=1`, `OPTIMIZE=1`, `-j1`;
+  preservar objetos ya construidos, **nunca make clean**;
+  respaldo y restauración de cualquier fuente MAME donante modificada.
+- Fuente MAME HEAD fijado en el procedimiento:
+  `1dc2180181a3b1a21e8761ae40b50a9f55ac4a5b`.
+- Compilador gcc/g++/make y Gtk3 disponibles en Surf;
+  1.951 MiB RAM, ~2.925 MiB zram, 12.6 GiB libres.
+- Ya instalados
+  `/usr/local/libexec/as2k/as2k-bin` y frontend AS2K.
+  No modificar esos ficheros al instalar ASPRO.
+- En
+  `/home/user/.local/share/alphasmart/private/aspro/`
+  existen ROM original Pro de 32 KiB, LCD KS0066 de 4 KiB,
+  payload de 121 bytes con SHA conocidos; no publicar ROMs.
+- `sudo -n` funciona en Surf.
+- Corregido arranque Python de `stable/aspro_session.py`:
+  importar `aspro_ui` solo después de configurar archivos
+  `ASPRO_UI_CONTROL_FILE` etc. Fuente verificada HC11 del DIAG
+  bajo `stable/proven_hc11/`, **solo código BSD, no ROMs**.
+
+**Operación nativa ejecutada**:
+- Script autorizado: `stable/deploy_surf_native_autonomous.sh`
+  commit `a847e509b3aca02e59767703c21609479272f233`
+- En Surf:
+  `/home/user/Projects/alphasmart/as2k-surf-native/aspro-stable-native/deploy_surf_native_20261021.sh`.
+- **Lanzamiento remoto completado**; PID `31905`,
+  ejecución autónoma: recopilar evidencia en
+  `~/.local/share/alphasmart/private/aspro/logs/surf-native-build-install.log`
+  y `.status`; no supervisión Commander.
+- Al iniciar el proceso solo se demostró lanzamiento; **NO reclamar
+  BUILD PASS, instalación o arranque hasta comprobar informe y
+  ejecutable en Surf**.
+- Cuota de esta intervención: **4/5 llamadas Commander Surf utilizadas;
+  1 disponible**. No hubo llamadas Commander T640 ni Vontar.
