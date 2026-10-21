@@ -46,9 +46,17 @@ def main():
     check("CPU D0 receiver decodes 8N1 and requires FF/4-char idle",
           "diag_bootstrap_rx_bit(bool rxd)" in patch and "m_diag_sci_idle >= 40" in patch
           and "value != 0xff" in patch and "m_diag_sci_ram[m_diag_sci_count++]" in patch)
-    check("SCI RX and echo are checked byte-for-byte by the campaign",
+    check("SCI RX and TXD 8N1 are checked byte-for-byte by the campaign",
           'sci_rx_exact' in (ROOT/"tools/ap07_campaign.py").read_text()
           and 'sci_echo_exact' in (ROOT/"tools/ap07_campaign.py").read_text())
+    check("CPU echo uses real bitwise TXD start/data/stop progression",
+          "bool mc68hc11d0_device::diag_bootstrap_tx_bit()" in patch
+          and "m_diag_sci_tx_pending" in patch
+          and "ASPRO_AP07_SCI_TX_ECHO_COMPLETE" in patch)
+    check("Pro host samples TXD waveform before continuing RX",
+          "d0.diag_bootstrap_tx_bit()" in drv
+          and "ASPRO_AP07_SCI_TXD_START_MISSING" in drv
+          and "ASPRO_AP07_SCI_TXD_ECHO_MISMATCH" in drv)
     print("AP07_ASSEMBLY_STATIC_PASS",len(data),"bytes",hashlib.sha256(data).hexdigest(),"hold",hex(syms["PAYLOAD0_HOLD"]))
     print("DYNAMIC STATUS: NOT EXECUTED; modeled RX/echo uses actual 8N1 bits; silicon boot ROM not executed")
 
