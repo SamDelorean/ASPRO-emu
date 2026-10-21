@@ -46,6 +46,7 @@ class mc68hc11d0_device : public mc68hc11_cpu_device {
 public:
     void diag_bootstrap_begin();
     void diag_bootstrap_rx_bit(bool rxd);
+    bool diag_bootstrap_tx_bit();
     void diag_bootstrap_load(const uint8_t *data, uint16_t size, uint16_t address) {
         assert(size<=192 && address==0x0040);
         std::copy(data, data+size, loaded.begin());
@@ -68,6 +69,8 @@ private:
     uint16_t m_diag_sci_count=0;
     uint16_t m_diag_sci_echo_count=0;
     uint8_t m_diag_sci_echo_last=0;
+    uint8_t m_diag_sci_tx_bit=0;
+    bool m_diag_sci_tx_pending=false;
     uint8_t m_diag_sci_shift=0;
     uint8_t m_diag_sci_bit=0;
     uint8_t m_diag_sci_idle=0;
@@ -85,26 +88,44 @@ static void send_byte(mc68hc11d0_device &d, uint8_t value, bool stop=true)
         d.diag_bootstrap_rx_bit((value >> n) & 1);
     d.diag_bootstrap_rx_bit(stop);
 }
-static void idle(mc68hc11d0_device &d, unsigned n)
+static uint8_t read_txd_echo(mc68hc11d0_device &d)
 {
-    for (unsigned k=0;k<n;k++)
-        d.diag_bootstrap_rx_bit(true);
+    uint8_t value=0;
+    for(unsigned bit=0;bit<10;bit++)
+    {
+        d.diag_bootstrap_rx_bit(true);  // separate RX wire remains high
+        const bool txd=d.diag_bootstrap_tx_bit();
+        if(bit==0) assert(!txd);         // 8N1 start
+        else if(bit<=8) { if(txd) value |= uint8_t(1U<<(bit-1)); }
+        else assert(txd);                // 8N1 stop
+    }
+    return value;
+}
+static void exchange(mc68hc11d0_device &d, uint8_t value)
+{
+    send_byte(d,value);
+    assert(read_txd_echo(d)==value);
+}
+static void idle(mc68hc11d0_device &d,unsigned n)
+{
+    for(unsigned k=0;k<n;k++) d.diag_bootstrap_rx_bit(true);
 }
 int main()
 {
     mc68hc11d0_device d;
     d.diag_bootstrap_begin();
     send_byte(d,0xff);
-    assert(d.echoes()==1);
+    assert(d.echoes()==0); // Receiving byte is NOT the same as TXD echo.
+    assert(read_txd_echo(d)==0xff && d.echoes()==1);
     const uint8_t payload[] = {0x0f,0x20,0xfe};
-    for (auto b:payload) send_byte(d,b);
-    idle(d,39);
+    for(auto b:payload) exchange(d,b);
+    idle(d,29); // 10 TXD echo cells already counted as RX idle.
     assert(!d.done() && d.loaded_count==0);
     idle(d,1);
     assert(d.done() && !d.bad() && d.echoes()==4 && d.count()==3);
     assert(d.echo_last()==0xfe && d.loaded_count==3 && d.loaded_address==0x0040);
     assert(std::equal(std::begin(payload),std::end(payload),d.loaded.begin()));
-    std::puts("PASS: FF sync; 8N1 data+echo; 39/40 idle; RAM handoff");
+    std::puts("PASS: FF sync; RX 8N1; physical TXD 8N1 echo; 40 idle cells; RAM handoff");
 
     mc68hc11d0_device badsync;
     badsync.diag_bootstrap_begin();
@@ -120,20 +141,21 @@ int main()
 
     mc68hc11d0_device full;
     full.diag_bootstrap_begin();
-    send_byte(full,0xff);
-    for(int i=0;i<192;i++) send_byte(full,uint8_t(i));
-    idle(full,40);
+    exchange(full,0xff);
+    for(int i=0;i<192;i++) exchange(full,uint8_t(i));
+    idle(full,30);
     assert(full.done() && !full.bad() && full.count()==192 && full.loaded_count==192);
     assert(full.echoes()==193);
-    std::puts("PASS: full 192 bytes");
+    std::puts("PASS: full 192 bytes with 8N1 TXD echo");
 
     mc68hc11d0_device over;
     over.diag_bootstrap_begin();
-    send_byte(over,0xff);
-    for(int i=0;i<193;i++) send_byte(over,uint8_t(i));
+    exchange(over,0xff);
+    for(int i=0;i<192;i++) exchange(over,uint8_t(i));
+    send_byte(over,0x55); // 193rd byte, not permitted; no echo
     idle(over,40);
     assert(over.bad() && !over.done() && over.loaded_count==0);
-    std::puts("PASS: 193 byte overflow blocked");
+    std::puts("PASS: 193-byte overflow blocks CPU execution");
 
     return 0;
 }
@@ -162,7 +184,7 @@ def main() -> None:
             raise SystemExit("FAIL: compiled D0 SCI receiver regression")
         print(exe.stdout.strip())
         print("AP07_SCI_CXX_SMOKE_PASS: exact donor snippets; 5 executable cases")
-        print("Scope: C++ access, decode, echo and bounds only; no MAME/LCD claims")
+        print("Scope: C++ access, true TXD 8N1 echo, decode and bounds; no MAME/LCD claims")
 
 if __name__ == "__main__":
     main()
