@@ -361,3 +361,20 @@ llamadas Commander. No se ha hecho nueva llamada ni lanzado
 nuevo job, esperando nueva autorización específica para la
 siguiente intervención según la política universal. No tocar
 donantes, no reabrir AP06 ni crear versión estable.
+
+## AP-07 — cierre funcional verificado, 20-oct-2026
+
+**PASS_AP07_DIAG_SCI_RX_TXD_RAM_LCD_BOOT_OK** en ASPRO-DIAG MAME,
+con arranque ROM normal conservado. Producto compilado del commit
+`5d174edf12c2ebb92e6f1e6657fff1fa709584e8`;
+binario SHA256 `1437d66f8f3149f6cf3157df960ddeeb9616535586e75f062fbaf9ecc699a662`.
+Carga SCI íntegra de 121 bytes y 122 ecos 8N1, PC RAM `$0040`,
+hold `$008B`, bytes `BOOT OK` observados en bus LCD0 y
+captura revisada con SHA256 `41921bdd98cdb5418e5451ce967e1e6eb4735d854902f6195c978ef7eab28428`.
+Regresión de arranque normal con teclado A y cambio LCD PASS.
+`AP07_JOB_EXIT=0`. Evidencia e interpretación detalladas:
+`docs/AP07_FUNCTIONAL_PASS_20261020.md`. La ROM interna Motorola
+no se emuló instrucción a instrucción; se usó receptor SCI de
+comportamiento equivalente a la estrategia diagnóstica de AS2K.
+Nada modificado en AS2K, ASPRO-STABLE, DIAG-ROM-Pro u OS2K-Pro.
+No reabrir AP-07 diagnóstico sin nueva regresión o requisito concreto.
