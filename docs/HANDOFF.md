@@ -235,3 +235,32 @@ CPU_PATCH_NOT_COMPILED / DIAG_POST_SCI_RUNTIME_PENDING /
 LCD0_BUS_OBSERVATION_PENDING / VISUAL_PENDING / SCI_AUTHENTIC_NOT_IMPLEMENTED`.
 Este incremento NO confirma un PASS de MAME, SCI ni LCD.
 La intervención remota continúa requiriendo autorización específica.
+
+
+## AP-07 — continuación integral sin Commander (20-oct-2026)
+
+- Corregido `tools/ap07_campaign.py` para que el estado general distinga
+  `POST_SCI_DIAG_LCD_BUS_PASS_VISUAL_REVIEW_PENDING` de
+  `DYNAMIC_UNVERIFIED`; ambos conservan
+  `authentic_sci_pass=false` y `visual_review_pass=false` hasta
+  evidencia válida. No confundir salida del proceso con aceptación de
+  transporte SCI ni revisión visual.
+- Preparado `tools/ap07_dcjob_integral.job.sh`: *único* job compatible
+  con `dcjob launch` y `DCJOB_RESULT_DIR`, sin exploración ni polling,
+  con verificación de repo/branch limpio y actualización sólo fast-forward
+  del checkout ASPRO. Conserva evidencias de fallos en el directorio
+  de resultados del launcher. No añade jobs a inbox automáticamente.
+  `ASPRO_ROOT` y `ASPRO_MAME_REFERENCE` son configurables; las rutas
+  por defecto deben quedar verificadas antes de un despacho autorizado.
+- Comprobación estática independiente sobre los blobs exactos de
+  `SamDelorean/mame-as3k@c4e48388...`: 13/13 verificaciones
+  satisfactorias (9 anclajes CPU únicos, 2 identidades Git,
+  2 restricciones de parche). Esto NO sustituye Python static campaign,
+  ni compilación, ni prueba MAME.
+- Cola compartida `COMMANDER_PIPELINE/inbox` observada vacía al revisar
+  esta continuidad; se deja vacía. El usuario dijo «Siguiente»,
+  que continúa el incremento pero no equivale a autorización Commander
+  según las reglas universales recuperadas. **0 llamadas Commander.**
+- Estado: `AP07_SOURCE_READY / DCJOB_WRAPPER_PREPARED /
+  CPU_COMPILE_PENDING / POST_SCI_RUNTIME_PENDING /
+  AUTHENTIC_SCI_NOT_IMPLEMENTED / VISUAL_PENDING`.
