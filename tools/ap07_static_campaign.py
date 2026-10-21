@@ -39,11 +39,18 @@ def main():
     drv=(ROOT/"src/mame/skeleton/alphasma.cpp").read_text()
     check("ROM Pro boot default unchanged",'ROM_LOAD( "alphasmartpro212.rom"' in drv)
     check("PC Send integration still exists","ASPRO_PC_HOST_EDGE_WAKE_IRQ" in drv and "send_sink_codepoint(" in drv)
-    check("boot is opt-in with bounded private payload","PORT_START(\"BOOTSTRAP_MODE\")" in drv and "diag_bootstrap_load" in drv and "file_size > 192" in drv)
+    check("boot is opt-in with bounded private payload","PORT_START(\"BOOTSTRAP_MODE\")" in drv and "diag_bootstrap_begin" in drv and "diag_bootstrap_rx_bit(rxd)" in drv
+          and "file_size > 192" in drv)
     patch=(ROOT/"tools/ap07_patch_d0_cpu.py").read_text()
     check("CPU patch remains confined to ASPRO tree", 'build/send-mame' in patch and "expected_h=" in patch and "expected_c=" in patch)
+    check("CPU D0 receiver decodes 8N1 and requires FF/4-char idle",
+          "diag_bootstrap_rx_bit(bool rxd)" in patch and "m_diag_sci_idle >= 40" in patch
+          and "value != 0xff" in patch and "m_diag_sci_ram[m_diag_sci_count++]" in patch)
+    check("SCI RX and echo are checked byte-for-byte by the campaign",
+          'sci_rx_exact' in (ROOT/"tools/ap07_campaign.py").read_text()
+          and 'sci_echo_exact' in (ROOT/"tools/ap07_campaign.py").read_text())
     print("AP07_ASSEMBLY_STATIC_PASS",len(data),"bytes",hashlib.sha256(data).hexdigest(),"hold",hex(syms["PAYLOAD0_HOLD"]))
-    print("DYNAMIC STATUS: NOT EXECUTED, SCI authentic: NOT IMPLEMENTED")
+    print("DYNAMIC STATUS: NOT EXECUTED; modeled RX/echo uses actual 8N1 bits; silicon boot ROM not executed")
 
 if __name__=="__main__":
     main()
