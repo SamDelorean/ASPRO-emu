@@ -39,7 +39,7 @@ if build_mame >"$FIRST" 2>&1; then
 else
     cat "$FIRST"
     if grep -Fq 'libemu.a(dvtext.o): bad reloc symbol index' "$FIRST"; then
-        OBJ="$TREE/linux_gcc/obj/x64/Release/src/emu/dvtext.o"
+        OBJ="$TREE/linux_gcc/obj/x64/Release/src/emu/debug/dvtext.o"
         LIB="$TREE/linux_gcc/bin/x64/Release/libemu.a"
         if [[ ! -f "$OBJ" || ! -f "$LIB" || -L "$OBJ" || -L "$LIB" ]]; then
             echo "AP07_BLOCKED_DVTEXT_EXPECTED_PRIVATE_FILES_MISSING" >&2
