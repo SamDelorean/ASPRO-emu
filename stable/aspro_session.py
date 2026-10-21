@@ -10,7 +10,6 @@ from pathlib import Path
 import gi
 gi.require_version("Gtk","3.0")
 from gi.repository import Gtk
-from aspro_ui import ProApplication
 
 HOME=Path.home()
 CONFIG=Path(os.environ.get("ASPRO_CONFIG_DIR",HOME/".config/aspro"))
@@ -81,6 +80,8 @@ def run():
     core=subprocess.Popen(cmd,env=env,stdout=logfile,stderr=subprocess.STDOUT)
     try:
         os.environ.update({k:v for k,v in env.items() if k.startswith("ASPRO_")})
+        # Import GTK frontend ONLY after its control/event/frame environment exists.
+        from aspro_ui import ProApplication
         code=ProApplication().run(sys.argv[:1])
         return code
     finally:
