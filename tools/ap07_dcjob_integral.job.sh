@@ -13,7 +13,7 @@ REASON="not_started"
 finish() {
     local rc=$?
     trap - EXIT
-    printf 'AP07_DISPATCH_STATE=%s\nAP07_REASON=%s\nAP07_EXIT=%s\nAP07_AUTHENTIC_SCI=NOT_IMPLEMENTED\n' \
+    printf 'AP07_DISPATCH_STATE=%s\nAP07_REASON=%s\nAP07_EXIT=%s\nAP07_SCI=8N1_CPU_BEHAVIORAL_MODEL; SILICON_BOOT_ROM_UNVERIFIED\n' \
         "$STATUS" "$REASON" "$rc" > "$RESULT_DIR/ap07_dispatch.status"
     for name in d0_datasheet_tests.log payload_static_tests.log build.log \
                 campaign.latest.json final.status; do
