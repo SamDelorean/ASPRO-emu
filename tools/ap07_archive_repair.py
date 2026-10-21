@@ -45,14 +45,23 @@ def main() -> int:
     archive = ARCHIVES / archive_name
     if not archive.is_file() or archive.is_symlink():
         p.error("private MAME archive missing or symlinked: " + str(archive))
-    # The source name is not guessed. Search only within the independently
-    # exported MAME source subtree; require exactly one real C++ source.
-    source_root = tree / "src"
+    # Resolve by actual MAME archive ownership first, then by exact
+    # translation-unit basename. Generic names such as video.cpp are
+    # ambiguous across MAME; libemu.a uniquely selects src/emu.
+    archive_roots = {
+        "libemu.a": tree / "src" / "emu",
+        "libfrontend.a": tree / "src" / "frontend",
+        "libformats.a": tree / "src" / "lib" / "formats",
+    }
+    source_root = archive_roots.get(archive_name)
+    if source_root is None or not source_root.is_dir() or source_root.is_symlink():
+        p.error("unrecognized MAME archive-to-source mapping: " + archive_name)
     sources = [item for item in source_root.rglob(member + ".cpp")
-               if item.is_file() and not item.is_symlink()]
-    if len(sources) != 1 or not sources[0].resolve().is_relative_to(source_root):
-        p.error("no unique private C++ source found for " + member + ": " +
-                repr([str(x) for x in sources]))
+               if item.is_file() and not item.is_symlink()
+               and item.resolve().is_relative_to(source_root)]
+    if len(sources) != 1:
+        p.error("no unique private source in " + archive_name + " for " +
+                member + ": " + repr([str(x) for x in sources]))
     source = sources[0]
     # Archive name, member and source path are all obtained from actual
     # linker evidence and verified private tree membership.
