@@ -25,7 +25,7 @@ finish() {
  rc=$?
  trap - EXIT
  if test "$OVERLAID" -eq 1; then
-  for item in src/mame/skeleton/alphasma.cpp src/devices/cpu/mc68hc11/mc68hc11.cpp src/devices/cpu/mc68hc11/mc68hc11.h src/mame/mame.lst; do
+  for item in src/mame/skeleton/alphasma.cpp src/devices/cpu/mc68hc11/mc68hc11.cpp src/devices/cpu/mc68hc11/mc68hc11.h src/mame/mame.lst 3rdparty/bx/include/bx/platform.h 3rdparty/bx/src/file.cpp 3rdparty/bx/src/thread.cpp; do
    if test -f "$BACK/$item"; then cp -p "$BACK/$item" "$MAME/$item"; fi
   done
  fi
@@ -38,6 +38,9 @@ finish() {
  exit "$rc"
 }
 trap finish EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 test "$(uname -m)" = armv7l || { echo "BLOCKED_NOT_SURF_ARMV7"; exit 2; }
 sudo -n true || { echo "BLOCKED_SUDO_NOT_READY"; exit 2; }
 test -e "$MAME/.git" && test -f "$MAME/makefile" && test -e "$AS2K/.git" ||
@@ -82,7 +85,7 @@ grep -q diag_bootstrap_tx_bit "$CPU/mc68hc11.cpp"
 grep -q diagnostic_bootstrap_wait_for_serial "$CPU/mc68hc11.h"
 sha256sum "$CPU/"* "$APP/"*.py "$APP/alphasma.cpp" >"$PREFIX/source-sha256.txt"
 STEP=BACKUP_NATIVE_DONOR_SOURCES
-for item in src/mame/skeleton/alphasma.cpp src/devices/cpu/mc68hc11/mc68hc11.cpp src/devices/cpu/mc68hc11/mc68hc11.h src/mame/mame.lst; do
+for item in src/mame/skeleton/alphasma.cpp src/devices/cpu/mc68hc11/mc68hc11.cpp src/devices/cpu/mc68hc11/mc68hc11.h src/mame/mame.lst 3rdparty/bx/include/bx/platform.h 3rdparty/bx/src/file.cpp 3rdparty/bx/src/thread.cpp; do
  test -f "$MAME/$item" && test ! -L "$MAME/$item" ||
   { echo "BLOCKED_UNSAFE_NATIVE_SOURCE $item"; exit 4; }
  mkdir -p "$BACK/$(dirname "$item")"
@@ -98,6 +101,64 @@ awk '
  in_pro && $0=="asma2k" {next}
  {print}
 ' "$BACK/src/mame/mame.lst" >"$MAME/src/mame/mame.lst"
+# EXACT reusable Surface native musl adaptation of 17-Oct-2026,
+# recovered from surface-native-build-musl-v2-20261017.sh (successful AS2K).
+# All three donor files were backed up above and are restored by EXIT trap.
+STEP=BX_MUSL_NATIVE_V2_20261017
+python3 -B - "$MAME/3rdparty/bx/include/bx/platform.h" \
+    "$MAME/3rdparty/bx/src/file.cpp" \
+    "$MAME/3rdparty/bx/src/thread.cpp" <<'PY_BX_MUSL'
+from pathlib import Path
+import sys
+h,f,th=map(Path,sys.argv[1:])
+s=h.read_text()
+replacements=[
+ ('#define BX_CRT_NEWLIB 0',
+  '#define BX_CRT_NEWLIB 0\n#define BX_CRT_MUSL   0'),
+ ('#\telif BX_PLATFORM_BSD\n#\t\tundef  BX_CRT_BSD\n#\t\tdefine BX_CRT_BSD 1',
+  '#\telif BX_PLATFORM_BSD\n#\t\tundef  BX_CRT_BSD\n#\t\tdefine BX_CRT_BSD 1'
+  '\n#\telif BX_PLATFORM_LINUX && !defined(__GLIBC__)'
+  '\n#\t\tundef  BX_CRT_MUSL\n#\t\tdefine BX_CRT_MUSL 1'),
+ ('\t&& !BX_CRT_NEWLIB',
+  '\t&& !BX_CRT_NEWLIB ' + chr(92) + '\n\t&& !BX_CRT_MUSL'),
+ ('#elif BX_CRT_NEWLIB',
+  '#elif BX_CRT_MUSL\n#\tdefine BX_CRT_NAME "musl libc"\n#elif BX_CRT_NEWLIB'),
+]
+for before,after in replacements:
+    if s.count(before)!=1:
+        raise SystemExit("BLOCKED canonical BX platform.h layout changed: "+before[:40])
+    s=s.replace(before,after,1)
+t=f.read_text()
+before='#\telif 0                   '+chr(92)
+after=('#\telif BX_CRT_MUSL\n#\t\tdefine fseeko64 fseeko'
+       '\n#\t\tdefine ftello64 ftello\n'+before)
+if t.count(before)!=1:
+    raise SystemExit("BLOCKED canonical BX file.cpp layout changed")
+t=t.replace(before,after,1)
+q=th.read_text()
+thread_before='#\tinclude <pthread.h>\n#\tif BX_PLATFORM_BSD'
+thread_after=('#\tinclude <pthread.h>\n'
+              '#\tif BX_CRT_MUSL && BX_PLATFORM_LINUX\n'
+              '#\t\tinclude <sys/prctl.h>\n'
+              '#\tendif\n#\tif BX_PLATFORM_BSD')
+if q.count(thread_before)!=1:
+    raise SystemExit("BLOCKED canonical BX thread.cpp layout changed")
+q=q.replace(thread_before,thread_after,1)
+h.write_text(s); f.write_text(t); th.write_text(q)
+print("BX_MUSL_V2_CANONICAL_REVERSIBLE_PATCH_APPLIED")
+PY_BX_MUSL
+# Fast target ABI proof: fail before wasting RAM on the full make.
+printf '#include <bx/platform.h>\n#if BX_CRT_NONE || !BX_CRT_MUSL\n#error BX musl CRT misdetected\n#endif\n' |
+ c++ -E -x c++ -I"$MAME/3rdparty/bx/include" - >/dev/null
+printf '#include <sys/types.h>\nstatic_assert(sizeof(off_t)==8, "musl off_t must be 64bit");\n' |
+ c++ -std=c++17 -fsyntax-only -x c++ -
+c++ -std=c++17 -DBX_CONFIG_DEBUG=0 -I"$MAME/3rdparty/bx/include" \
+ -fsyntax-only "$MAME/3rdparty/bx/src/crtnone.cpp" \
+ "$MAME/3rdparty/bx/src/file.cpp" "$MAME/3rdparty/bx/src/thread.cpp"
+echo "BX_MUSL_NATIVE_SYNTAX_PASS"
+# The original successful build proves that the generated bx target is
+# 'mameas2k'; this ASPRO build generates 'mameaspro' itself during make.
+# Do not reuse the AS2K-generated bx.make or installed AS2K objects as ASPRO.
 STEP=COMPILE_NATIVE_ARMV7_J1
 # Existing native build policy: ARMv7/musl, C DRC, no x86 -m32, -j1, no clean.
 export MAKEFLAGS='ARCHITECTURE='
