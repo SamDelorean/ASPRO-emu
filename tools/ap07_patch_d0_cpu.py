@@ -386,7 +386,8 @@ if __name__ == "__main__":
             or marker.get("authentic_sci") is not False):
             p.error("modified CPU files diverge from approved ASPRO SCI hashes")
         if ("diagnostic_bootstrap_wait_for_serial" in h and
-            "diagnostic_bootstrap_wait_for_serial" in c):
+            "diagnostic_bootstrap_wait_for_serial" in c and
+            "diag_bootstrap_tx_bit" in h and "diag_bootstrap_tx_bit" in c):
             print(json.dumps({"status":"SCI_PATCH_ALREADY_VERIFIED","sha":source_ids}))
             raise SystemExit(0)
         # Recovery for the exact first AP07 source revision that reached
@@ -407,7 +408,7 @@ if __name__ == "__main__":
         hpath.write_text(new_h)
         cpath.write_text(new_c)
         marker["patched_blobs"]=[blob(new_h),blob(new_c)]
-        marker["revision"]="BASE_WAIT_ACCESS_FIX"
+        marker["revision"]="SCI_RX_TXD_ECHO_8N1"
         marker_path.write_text(json.dumps(marker,indent=2)+"\n")
         print(json.dumps({"status":"AP07_SCI_BASE_WAIT_UPGRADED",
                           "patched_blobs":marker["patched_blobs"]}))
@@ -446,6 +447,6 @@ if __name__ == "__main__":
     hpath.write_text(new_h); cpath.write_text(new_c)
     marker={"feature":"AP07_SCI_8N1_D0P","source_blobs":list(source_ids),
             "patched_blobs":[blob(new_h),blob(new_c)],
-            "cpu_patched":True,"model":model,"authentic_sci":False,"uart_8n1_model":True}
+            "cpu_patched":True,"model":model,"revision":"SCI_RX_TXD_ECHO_8N1","authentic_sci":False,"uart_8n1_model":True}
     (tree/".ap07-cpu-marker.json").write_text(json.dumps(marker,indent=2)+"\n")
     print(json.dumps(marker))
