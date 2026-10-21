@@ -249,11 +249,11 @@ def extend_existing_d0(h, c, replace):
     )
     if not all(key in d0 for key in required):
         raise ValueError("AS2K donor D0 public ABI is not recognized")
-    if ("void mc68hc11d0_device::diag_bootstrap_load(" not in c
-        or "void mc68hc11d0_device::device_start()" not in c
-        or "diagnostic_bootstrap_entry(" not in c
-        or "HC11D0 HPRIO" not in c):
-        raise ValueError("AS2K donor D0 runtime implementation unrecognized")
+    # AP06's pinned AS2K MAME copy already exports this public ABI.
+    # Do not require internal helper spelling or debug-log literals: these
+    # differ among known donor revisions and are not needed by SCI.
+    if "diag_bootstrap_load(" not in c:
+        raise ValueError("D0 loader is not implemented in CPU source")
     api=(
         "\tvoid diag_bootstrap_begin();\n"
         "\tvoid diag_bootstrap_rx_bit(bool rxd);\n"
@@ -288,9 +288,13 @@ def extend_existing_d0(h, c, replace):
         "m_diag_sci_echo_last","m_diag_sci_shift","m_diag_sci_bit",
         "m_diag_sci_idle","m_diag_sci_receiving","m_diag_sci_synced",
         "m_diag_sci_done","m_diag_sci_bad"))
-    c=replace(c,"\tsave_item(NAME(m_diag_bootstrap));",
-              "\tsave_item(NAME(m_diag_bootstrap));"+savers,
-              "existing D0 save state")
+    if "\tsave_item(NAME(m_diag_bootstrap));" in c:
+        c=replace(c,"\tsave_item(NAME(m_diag_bootstrap));",
+                  "\tsave_item(NAME(m_diag_bootstrap));"+savers,
+                  "existing D0 save state")
+    # Some AS2K donor revisions do not expose a dedicated D0 save-state
+    # override. The AP07 campaign uses no save states; keep their original
+    # lifecycle unchanged rather than introducing a second device_start().
     return h,c
 
 # ASPRO AP-07: apply AS2K's bounded D0 post-transfer bootstrap patch ONLY
