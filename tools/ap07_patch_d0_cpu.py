@@ -265,10 +265,11 @@ if __name__ == "__main__":
     if "diag_bootstrap_load" in h or "diag_bootstrap_load" in c:
         if (not marker_path.is_file() or
             "diag_bootstrap_load" not in h or "diag_bootstrap_load" not in c or
+            "diag_bootstrap_rx_bit" not in h or "diag_bootstrap_rx_bit" not in c or
             "HC11D0 HPRIO" not in c):
             p.error("partial or unmarked CPU bootstrap patch")
         marker=json.loads(marker_path.read_text())
-        if (marker.get("feature")!="AP07_POST_SCI_D0P"
+        if (marker.get("feature")!="AP07_SCI_8N1_D0P"
             or marker.get("patched_blobs")!=list(source_ids)
             or marker.get("authentic_sci") is not False):
             p.error("patched D0 source hashes diverged from ASPRO marker")
@@ -296,8 +297,8 @@ if __name__ == "__main__":
         if not target.exists():
             target.write_text(original)
     hpath.write_text(new_h); cpath.write_text(new_c)
-    marker={"feature":"AP07_POST_SCI_D0P","source_blobs":list(source_ids),
+    marker={"feature":"AP07_SCI_8N1_D0P","source_blobs":list(source_ids),
             "patched_blobs":[blob(new_h),blob(new_c)],
-            "cpu_patched":True,"authentic_sci":False}
+            "cpu_patched":True,"authentic_sci":False,"uart_8n1_model":True}
     (tree/".ap07-cpu-marker.json").write_text(json.dumps(marker,indent=2)+"\n")
     print(json.dumps(marker))
