@@ -15,7 +15,7 @@ finish() {
     trap - EXIT
     printf 'AP07_DISPATCH_STATE=%s\nAP07_REASON=%s\nAP07_EXIT=%s\nAP07_SCI=8N1_CPU_BEHAVIORAL_MODEL; SILICON_BOOT_ROM_UNVERIFIED\n' \
         "$STATUS" "$REASON" "$rc" > "$RESULT_DIR/ap07_dispatch.status"
-    for name in d0_datasheet_tests.log payload_static_tests.log build.log \
+    for name in d0_datasheet_tests.log payload_static_tests.log sci_cpp_smoke.log build.log \
                 campaign.latest.json final.status; do
         if [[ -f "$ASPRO/private/ap07/$name" ]]; then
             cp -- "$ASPRO/private/ap07/$name" "$RESULT_DIR/$name" || true
@@ -47,7 +47,7 @@ git -C "$ASPRO" merge --ff-only FETCH_HEAD ||
 for source in "$ASPRO/tools/ap07_run_once.sh" "$ASPRO/tools/build_send_diag.sh"; do
     bash -n "$source" || { REASON=bad_bash_syntax; exit 23; }
 done
-for source in "$ASPRO/tools/ap07_campaign.py" "$ASPRO/tools/ap07_patch_d0_cpu.py" "$ASPRO/tools/ap07_assemble_payload0.py" "$ASPRO/tools/ap07_static_campaign.py"; do
+for source in "$ASPRO/tools/ap07_campaign.py" "$ASPRO/tools/ap07_patch_d0_cpu.py" "$ASPRO/tools/ap07_assemble_payload0.py" "$ASPRO/tools/ap07_static_campaign.py" "$ASPRO/tools/ap07_sci_cpp_smoke.py"; do
     PYTHONPYCACHEPREFIX="$RESULT_DIR/pycache" python3 -m py_compile "$source" ||
         { REASON=bad_python_syntax; exit 23; }
 done
