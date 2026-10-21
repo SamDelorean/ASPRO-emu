@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """AP-07: ASPRO-DIAG only, POST-SCI injection vs stock boot, never authentic SCI."""
 from __future__ import annotations
-import argparse,hashlib,json,os,resource,signal,subprocess,tempfile,zipfile
+import argparse,hashlib,json,os,re,resource,signal,subprocess,tempfile,zipfile
 from pathlib import Path
 from rom_audit import audit_rom
 from run_diag import ROOT,command,sha,video_mode,KS0066_F05_SHA1
@@ -37,6 +37,9 @@ def launch(exe,rom,lcd,payload,hold,mode):
                 proc=subprocess.Popen(cmd,cwd=out,stdout=stdout,stderr=stderr,start_new_session=True,preexec_fn=limit)
                 try:rep["exit_code"]=proc.wait(timeout=140)
                 except subprocess.TimeoutExpired:rep["exit_code"]=None;rep["status"]="TIMEOUT"
+    except (OSError,ValueError,subprocess.SubprocessError) as exc:
+        rep["status"]="PREPARATION_OR_LAUNCH_FAILED"
+        rep["error_type"]=type(exc).__name__
     finally:
         if proc:
             try:os.killpg(proc.pid,signal.SIGKILL)
@@ -49,14 +52,33 @@ def launch(exe,rom,lcd,payload,hold,mode):
         rep["normal_key_a_down"]="AP07_NORMAL_KEY_A_DOWN\n" in obs
         rep["normal_key_a_up"]="AP07_NORMAL_KEY_A_UP\n" in obs
         rep["post_sci_injection_seen"]="ASPRO_AP07_POST_SCI_BOOTSTRAP_INJECTION" in err
+        lcd_stream=re.findall(r"ASPRO_AP07_LCD0_BYTE rs=([01]) value=([0-9A-Fa-f]{2})",err)
+        lcd_data=bytes(int(h,16) for rs,h in lcd_stream if rs=="1")
+        lcd_cmd=[int(h,16) for rs,h in lcd_stream if rs=="0"]
+        rep["lcd0_bus_data_hex"]=lcd_data.hex()
+        rep["lcd0_bus_data_ascii"]=lcd_data.decode("ascii",errors="replace")
+        rep["lcd0_bus_boot_ok"]=b"BOOT OK" in lcd_data
+        expected_init=[0x28,0x01,0x06,0x0c]
+        rep["lcd0_init_commands_ok"]=any(lcd_cmd[n:n+4]==expected_init
+            for n in range(max(0,len(lcd_cmd)-3)))
+        rep["lcd0_rs_mismatch"]="ASPRO_AP07_LCD0_RS_MISMATCH" in err
+        rep["lcd0_bus_pass"]=(rep["lcd0_bus_boot_ok"] and
+            rep["lcd0_init_commands_ok"] and not rep["lcd0_rs_mismatch"])
         shot=out/"snap/bootstrap.png"
         rep["snapshot_sha256"]=sha(shot) if shot.exists() else None
-        rep["status"]=("POST_SCI_CPU_HOLD_OBSERVED_VISUAL_UNVERIFIED"
+        prev=out/"snap/normal_before.png"
+        rep["normal_before_sha256"]=sha(prev) if prev.exists() else None
+        rep["normal_lcd_changed"]=(mode=="normal" and rep["snapshot_sha256"] is not None
+            and rep["normal_before_sha256"] is not None
+            and rep["snapshot_sha256"]!=rep["normal_before_sha256"])
+        rep["status"]=("POST_SCI_DIAG_CPU_LCD_BUS_PASS_VISUAL_PENDING"
             if mode=="bootstrap" and rep.get("exit_code")==0 and rep["cpu_hold_observed"]
-            and rep["post_sci_injection_seen"] else
+            and rep["post_sci_injection_seen"] and rep["lcd0_bus_pass"]
+            and rep["snapshot_sha256"] is not None else
             "NORMAL_BOOT_PROCESS_OBSERVED_VISUAL_UNVERIFIED"
             if mode=="normal" and rep.get("exit_code")==0 and rep["observer_complete"]
             and rep["normal_key_a_down"] and rep["normal_key_a_up"]
+            and rep["normal_lcd_changed"]
             else "AP07_RUNTIME_UNVERIFIED")
         (out/"report.json").write_text(json.dumps(rep,indent=2)+"\n")
     return rep
@@ -91,8 +113,10 @@ def main():
     (ROOT/"private/ap07/report.latest.json").write_text(json.dumps(combined,indent=2)+"\n")
     print(json.dumps(combined,indent=2))
     return 0 if (results[0]["cpu_hold_observed"] and results[1]["observer_complete"] and
-                 results[0]["post_sci_injection_seen"] and
-                 results[1]["normal_key_a_down"] and results[1]["normal_key_a_up"]) else 4
+                 results[0]["post_sci_injection_seen"] and results[0]["lcd0_bus_pass"]
+                 and results[0]["snapshot_sha256"] is not None
+                 and results[1]["normal_key_a_down"] and results[1]["normal_key_a_up"]
+                 and results[1]["normal_lcd_changed"]) else 4
 
 if __name__=="__main__":
     raise SystemExit(main())
