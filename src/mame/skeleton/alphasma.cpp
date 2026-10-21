@@ -296,10 +296,10 @@ void aspro_send_state::pro_port_a_w(uint8_t data)
         {
             const uint8_t value = m_ap07_lcd_high | nibble;
             if (rs == m_ap07_lcd_high_rs)
-                logerror("ASPRO_AP07_LCD0_BYTE rs=%u value=%02X\\n",
+                logerror("ASPRO_AP07_LCD0_BYTE rs=%u value=%02X\n",
                     unsigned(rs), unsigned(value));
             else
-                logerror("ASPRO_AP07_LCD0_RS_MISMATCH high=%u low=%u\\n",
+                logerror("ASPRO_AP07_LCD0_RS_MISMATCH high=%u low=%u\n",
                     unsigned(m_ap07_lcd_high_rs), unsigned(rs));
             m_ap07_lcd_half = false;
         }
