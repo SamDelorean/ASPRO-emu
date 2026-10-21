@@ -432,3 +432,7 @@ sin polling de procesos.
   ejecutable en Surf**.
 - Cuota de esta intervención: **4/5 llamadas Commander Surf utilizadas;
   1 disponible**. No hubo llamadas Commander T640 ni Vontar.
+
+## Surf — reejecución nativa musl v2, 21-oct-2026
+
+Autorización: máximo 3 llamadas Commander Surf. El script `stable/deploy_surf_native_autonomous.sh` corregido en `a1b496a60031c526aa6d334e5576dd17b1f2ba8f` se descargó y lanzó en Surf con PID **5451** (primera llamada). Segunda llamada: proceso `make -j1` y `cc1plus` activos (PID make 5690), generación de `mameaspro/gmake-linux` 30/30, `alphasma.cpp` compilado, `libmame_aspro.a` archivado, y `mc68hc11.cpp` en compilación. El estado `COMPILE_NATIVE_ARMV7_J1 / EXIT=2` en archivo seguía siendo **del intento anterior**, porque el nuevo script solo escribe estado al finalizar. Ningún binario ASPRO todavía instalado en esa segunda comprobación. La tercera llamada Commander sigue reservada para la verificación final. No gastar en sondeos repetidos ni iniciar otro build, sin `make clean`. El mismo script autónomo valida ROM/payload, binario ARMv7, MAME y ROM boot antes de instalar; si falla, instala nada. **No afirmar PASS de build/install hasta ver el estado final y SHA.**
