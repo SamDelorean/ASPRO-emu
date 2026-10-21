@@ -10,7 +10,7 @@ MAME="$HOME/projects/mame-as2k-stable-arm64"
 PRIV="$HOME/.local/share/alphasmart/private/aspro"
 # Proprietary assets and tested CPU sources are seeded securely by Commander
 # from the already-verified private Drive archive. No remote rclone needed.
-REF="35fdf9bc72f2501f30dad5c7fffd2182c5b04c0c"
+REF="9512dd2e77ccfd0535aeee86a0df937f4538169a"
 mkdir -p "$STAGE/stable" "$PRIV/logs" "$PRIV/roms" "$PRIV/payload" "$PRIV/binaries/stable-aarch64"
 LOG="$PRIV/logs/vontar-stable.log"
 exec > >(tee -a "$LOG") 2>&1
@@ -79,7 +79,7 @@ grep -q 'diag_bootstrap_tx_bit' "$MAME/src/devices/cpu/mc68hc11/mc68hc11.cpp" ||
 cp "$STAGE/stable/alphasma.cpp" "$MAME/src/mame/skeleton/alphasma.cpp"
 STEP=BUILD_REDUCED_PRO
 cd "$MAME"
-make -j2 SUBTARGET=aspro SOURCES=src/mame/skeleton/alphasma.cpp REGENIE=1 USE_QTDEBUG=0
+make -j2 NOWERROR=1 SUBTARGET=aspro SOURCES=src/mame/skeleton/alphasma.cpp REGENIE=1 USE_QTDEBUG=0
 test -x "$MAME/aspro"
 STEP=VALIDATE_CORE
 "$MAME/aspro" -validate
