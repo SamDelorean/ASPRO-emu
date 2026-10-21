@@ -264,3 +264,47 @@ La intervención remota continúa requiriendo autorización específica.
 - Estado: `AP07_SOURCE_READY / DCJOB_WRAPPER_PREPARED /
   CPU_COMPILE_PENDING / POST_SCI_RUNTIME_PENDING /
   AUTHENTIC_SCI_NOT_IMPLEMENTED / VISUAL_PENDING`.
+
+
+## AP-07 — ejecución integral y fallo de compilación resuelto en fuentes (20-oct-2026)
+
+**Evidencia auténtica de T640** (únicamente ASPRO-DIAG, 3 llamadas
+Commander consumidas, no más dentro de la misma intervención):
+1. `000_aspro_ap07_sci_integral_20261020`: FAIL/2, 34 s;
+   `ap07_patch_d0_cpu.py` rechazó sin identificar el bootstrap ya
+   incorporado en la copia MAME de AS2K.
+2. `000_aspro_ap07_sci_REUSE_20261020`: FAIL/1, 22 s;
+   el reconocimiento comparaba cadenas internas ajenas a la ABI.
+3. `000_aspro_ap07_sci_D0_REUSE_FIX2_20261020`: FAIL/2, 35 s.
+   **Alcanzó compilación GCC 15.2** del driver ASPRO y del CPU MC68HC11;
+   los cinco errores GCC fueron accesos desde
+   `mc68hc11d0_device::diag_bootstrap_begin()` a miembros privados de
+   `mc68hc11_cpu_device`:
+   `m_irq_state`, `m_irq_asserted`, `m_wait_state`,
+   `m_stop_state` y `m_ccr`.
+   Drive: `COMMANDER_PIPELINE/outbox/ASPRO_AP07_build.log` e informe
+   `000_aspro_ap07_sci_D0_REUSE_FIX2_20261020_20261021T040007Z.summary.txt`.
+
+**Estática realmente ejecutada en T:** datasheet 15/15 PASS;
+ensamblado de Payload-0-Pro 18/18 PASS, **121 bytes**,
+`SHA256=25516cfc116850b4e7ac8b2a54f24137ec3d0250fde5c283b12848bd68517d53`,
+origen `$0040`, fin exclusivo `$00B9`, hold `$008B`.
+No declarar LCD, RX serial o MAME funcionalmente aprobados.
+
+**Corrección de código publicada después del tercer intento**:
+- `tools/ap07_patch_d0_cpu.py`: espera SCI movida a
+  `mc68hc11_cpu_device::diagnostic_bootstrap_wait_for_serial()`
+  (clase base, acceso legítimo a sus campos privados). D0 llama a este
+  método. Incluye migración verificable desde copias anteriores
+  de `.ap07-cpu-original` validada contra `source_blobs` de
+  `.ap07-cpu-marker.json`, de modo que las siguientes compilaciones
+  no reutilicen el parche SCI anterior fallido.
+- El camino reutiliza el bootstrap y loader existentes del MAME
+  exportado por AP06 (`source_head=a4b99b1a700a1d70b93a798fe7833e4cae28c137`).
+  No clona otro árbol ni reescribe el MAME o AS2K donante.
+- **Código corregido NO recompilado aún** (tres llamadas Commander
+  agotadas). `AP07_STATIC_PASS / CXX_PREVIOUS_PRIVATE_ACCESS_FAIL /
+  SOURCE_FIX_COMMITTED / DYNAMIC_PENDING / SILICON_BOOT_ROM_UNVERIFIED`.
+
+El flujo es un único job `ap07_run_once.sh`, sin gates de
+preproducción, sin pruebas en ASPRO-STABLE, sin DIAG-ROM-Pro/OS2K-Pro.
