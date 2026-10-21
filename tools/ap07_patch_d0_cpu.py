@@ -74,12 +74,115 @@ void mc68hc11d0_device::diag_bootstrap_load(const uint8_t *data, uint16_t size, 
 
 '''
 
+DONOR_SCI = r'''
+void mc68hc11d0_device::diag_bootstrap_begin()
+{
+	if (!m_diag_bootstrap)
+		fatalerror("HC11D0 SCI bootstrap started in normal ROM mode");
+	m_hprio = 0xc0;
+	m_config |= 0x04;
+	m_diag_sci_count = 0;
+	m_diag_sci_echo_count = 0;
+	m_diag_sci_echo_last = 0;
+	m_diag_sci_shift = 0;
+	m_diag_sci_bit = 0;
+	m_diag_sci_idle = 0;
+	m_diag_sci_receiving = false;
+	m_diag_sci_synced = false;
+	m_diag_sci_done = false;
+	m_diag_sci_bad = false;
+	m_irq_state = 0;
+	m_irq_asserted = false;
+	m_wait_state = 1;
+	m_stop_state = 0;
+	m_ccr = CC_X | CC_I | CC_S;
+	logerror("ASPRO_AP07_SCI_BOOT_BEGIN hprio=C0 baud=7812.5\n");
+}
+
+void mc68hc11d0_device::diag_bootstrap_rx_bit(bool rxd)
+{
+	if (!m_diag_bootstrap || m_diag_sci_done || m_diag_sci_bad)
+		return;
+	if (!m_diag_sci_receiving)
+	{
+		if (!rxd)
+		{
+			m_diag_sci_receiving = true;
+			m_diag_sci_bit = 0;
+			m_diag_sci_shift = 0;
+			m_diag_sci_idle = 0;
+		}
+		else if (m_diag_sci_synced && m_diag_sci_count &&
+				++m_diag_sci_idle >= 40)
+		{
+			m_diag_sci_done = true;
+			logerror("ASPRO_AP07_SCI_TRANSFER_COMPLETE bytes=%u echoes=%u idle_bits=%u\n",
+				unsigned(m_diag_sci_count), unsigned(m_diag_sci_echo_count),
+				unsigned(m_diag_sci_idle));
+			diag_bootstrap_load(m_diag_sci_ram, m_diag_sci_count, 0x0040);
+		}
+		return;
+	}
+	if (m_diag_sci_bit < 8)
+	{
+		if (rxd)
+			m_diag_sci_shift |= uint8_t(1U << m_diag_sci_bit);
+		++m_diag_sci_bit;
+		return;
+	}
+	m_diag_sci_receiving = false;
+	if (!rxd)
+	{
+		m_diag_sci_bad = true;
+		logerror("ASPRO_AP07_SCI_FRAME_ERROR\n");
+		return;
+	}
+	const uint8_t value = m_diag_sci_shift;
+	if (!m_diag_sci_synced)
+	{
+		if (value != 0xff)
+		{
+			m_diag_sci_bad = true;
+			logerror("ASPRO_AP07_SCI_SYNC_ERROR byte=%02X\n", unsigned(value));
+			return;
+		}
+		m_diag_sci_synced = true;
+		logerror("ASPRO_AP07_SCI_SYNC_OK ff\n");
+	}
+	else
+	{
+		if (m_diag_sci_count == 192)
+		{
+			m_diag_sci_bad = true;
+			logerror("ASPRO_AP07_SCI_OVERFLOW\n");
+			return;
+		}
+		m_diag_sci_ram[m_diag_sci_count++] = value;
+		logerror("ASPRO_AP07_SCI_RX index=%u byte=%02X\n",
+			unsigned(m_diag_sci_count - 1), unsigned(value));
+	}
+	m_diag_sci_echo_last = value;
+	++m_diag_sci_echo_count;
+	logerror("ASPRO_AP07_SCI_ECHO index=%u byte=%02X\n",
+		unsigned(m_diag_sci_echo_count - 1), unsigned(value));
+}
+
+'''
+
 DONOR_D0 = r'''	// Bounded diagnostic bootstrap support for the AS2000 takeover tests.
 	// Normal D0 users are unchanged unless this mode is explicitly enabled.
 	void set_diag_bootstrap(bool enable) { m_diag_bootstrap = enable; }
 	bool diag_bootstrap_enabled() const { return m_diag_bootstrap; }
 	uint8_t hprio() const { return m_hprio; }
 	void diag_bootstrap_load(const uint8_t *data, uint16_t size, uint16_t address = 0x0040);
+	void diag_bootstrap_begin();
+	void diag_bootstrap_rx_bit(bool rxd);
+	bool diag_bootstrap_done() const { return m_diag_sci_done; }
+	bool diag_bootstrap_error() const { return m_diag_sci_bad; }
+	uint16_t diag_bootstrap_rx_count() const { return m_diag_sci_count; }
+	uint16_t diag_bootstrap_echo_count() const { return m_diag_sci_echo_count; }
+	uint8_t diag_bootstrap_echo_last() const { return m_diag_sci_echo_last; }
+
 
 protected:
 	virtual void device_start() override ATTR_COLD;
@@ -94,6 +197,17 @@ private:
 
 	bool m_diag_bootstrap;
 	uint8_t m_hprio;
+	uint8_t m_diag_sci_ram[192]{};
+	uint16_t m_diag_sci_count = 0;
+	uint16_t m_diag_sci_echo_count = 0;
+	uint8_t m_diag_sci_echo_last = 0;
+	uint8_t m_diag_sci_shift = 0;
+	uint8_t m_diag_sci_bit = 0;
+	uint8_t m_diag_sci_idle = 0;
+	bool m_diag_sci_receiving = false;
+	bool m_diag_sci_synced = false;
+	bool m_diag_sci_done = false;
+	bool m_diag_sci_bad = false;
 };
 '''
 
@@ -113,11 +227,11 @@ def patch_bootstrap(h, c, replace, donor):
     c = replace(c, anchor,
                 "\tblock(base + 0x3c, base + 0x3c).rw(FUNC(mc68hc11d0_device::hprio_r), FUNC(mc68hc11d0_device::hprio_w)); // HPRIO\n" + anchor, "D0 HPRIO")
     c = replace(c, "void mc68hc11d0_device::device_reset()",
-                "void mc68hc11d0_device::device_start()\n{\n\tmc68hc11_cpu_device::device_start();\n\tsave_item(NAME(m_hprio));\n\tsave_item(NAME(m_diag_bootstrap));\n}\n\nvoid mc68hc11d0_device::device_reset()", "D0 start")
+                "void mc68hc11d0_device::device_start()\n{\n\tmc68hc11_cpu_device::device_start();\n\tsave_item(NAME(m_hprio));\n\tsave_item(NAME(m_diag_bootstrap));\n\tsave_item(NAME(m_diag_sci_ram));\n\tsave_item(NAME(m_diag_sci_count));\n\tsave_item(NAME(m_diag_sci_echo_count));\n\tsave_item(NAME(m_diag_sci_echo_last));\n\tsave_item(NAME(m_diag_sci_shift));\n\tsave_item(NAME(m_diag_sci_bit));\n\tsave_item(NAME(m_diag_sci_idle));\n\tsave_item(NAME(m_diag_sci_receiving));\n\tsave_item(NAME(m_diag_sci_synced));\n\tsave_item(NAME(m_diag_sci_done));\n\tsave_item(NAME(m_diag_sci_bad));\n}\n\nvoid mc68hc11d0_device::device_reset()", "D0 start")
     c = replace(c, "\tm_port_data[0] &= 0x8f;\n\tddr_w<0>(0x70);\n}",
                 "\tm_port_data[0] &= 0x8f;\n\tddr_w<0>(0x70);\n\tm_hprio = m_diag_bootstrap ? 0xc0 : 0x00;\n}", "D0 reset")
     c = replace(c, "void mc68hc11e1_device::device_reset()",
-                DONOR_HPRIO + "void mc68hc11e1_device::device_reset()", "HPRIO implementation")
+                DONOR_HPRIO + DONOR_SCI + "void mc68hc11e1_device::device_reset()", "HPRIO implementation")
     c = replace(c, "void mc68hc11_cpu_device::execute_set_input(",
                 DONOR_ENTRY + "void mc68hc11_cpu_device::execute_set_input(", "bootstrap execution")
     return h, c
