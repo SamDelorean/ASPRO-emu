@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""AP-07: ASPRO-DIAG only, POST-SCI injection vs stock boot, never authentic SCI."""
+"""AP-07: ASPRO-DIAG only, Host-driven 8N1 SCI receiver model vs stock boot; not a boot-ROM instruction trace."""
 from __future__ import annotations
 import argparse,hashlib,json,os,re,resource,signal,subprocess,tempfile,zipfile
 from pathlib import Path
@@ -51,7 +51,25 @@ def launch(exe,rom,lcd,payload,hold,mode):
         rep["observer_complete"]="AP07_OBSERVATION_COMPLETE\n" in obs
         rep["normal_key_a_down"]="AP07_NORMAL_KEY_A_DOWN\n" in obs
         rep["normal_key_a_up"]="AP07_NORMAL_KEY_A_UP\n" in obs
-        rep["post_sci_injection_seen"]="ASPRO_AP07_POST_SCI_BOOTSTRAP_INJECTION" in err
+        rep["sci_sync_ok"]="ASPRO_AP07_SCI_SYNC_OK ff" in err
+        rep["sci_host_started"]="ASPRO_AP07_SCI_HOST_START" in err
+        rep["sci_transition"]="ASPRO_AP07_SCI_EXECUTION_TRANSFERRED pc=0040" in err
+        rep["sci_transfer_complete"]="ASPRO_AP07_SCI_TRANSFER_COMPLETE" in err
+        rep["sci_error"]=any(t in err for t in (
+            "ASPRO_AP07_SCI_FRAME_ERROR","ASPRO_AP07_SCI_SYNC_ERROR",
+            "ASPRO_AP07_SCI_OVERFLOW","ASPRO_AP07_SCI_BAD_FRAME"))
+        values=re.findall(r"ASPRO_AP07_SCI_RX index=(\\d+) byte=([0-9A-Fa-f]{2})",err)
+        echo=re.findall(r"ASPRO_AP07_HOST_ECHO_CHECK index=(\\d+) value=([0-9A-Fa-f]{2})",err)
+        received=bytes(int(h,16) for i,h in values)
+        rep["sci_rx_exact"]=(received==payload and
+            [int(i) for i,h in values]==list(range(len(payload))))
+        expected_echo=b"\\xff"+payload
+        echoed=bytes(int(h,16) for i,h in echo)
+        rep["sci_echo_exact"]=(echoed==expected_echo and
+            [int(i) for i,h in echo]==list(range(len(expected_echo))))
+        rep["sci_8n1_model_pass"]=(rep["sci_sync_ok"] and rep["sci_host_started"]
+            and rep["sci_transition"] and rep["sci_transfer_complete"]
+            and rep["sci_rx_exact"] and rep["sci_echo_exact"] and not rep["sci_error"])
         lcd_stream=re.findall(r"ASPRO_AP07_LCD0_BYTE rs=([01]) value=([0-9A-Fa-f]{2})",err)
         lcd_data=bytes(int(h,16) for rs,h in lcd_stream if rs=="1")
         lcd_cmd=[int(h,16) for rs,h in lcd_stream if rs=="0"]
@@ -71,9 +89,9 @@ def launch(exe,rom,lcd,payload,hold,mode):
         rep["normal_lcd_changed"]=(mode=="normal" and rep["snapshot_sha256"] is not None
             and rep["normal_before_sha256"] is not None
             and rep["snapshot_sha256"]!=rep["normal_before_sha256"])
-        rep["status"]=("POST_SCI_DIAG_CPU_LCD_BUS_PASS_VISUAL_PENDING"
+        rep["status"]=("SCI_8N1_MODEL_RX_ECHO_CPU_LCD_BUS_PASS_VISUAL_PENDING"
             if mode=="bootstrap" and rep.get("exit_code")==0 and rep["cpu_hold_observed"]
-            and rep["post_sci_injection_seen"] and rep["lcd0_bus_pass"]
+            and rep["sci_8n1_model_pass"] and rep["lcd0_bus_pass"]
             and rep["snapshot_sha256"] is not None else
             "NORMAL_BOOT_PROCESS_OBSERVED_VISUAL_UNVERIFIED"
             if mode=="normal" and rep.get("exit_code")==0 and rep["observer_complete"]
@@ -100,7 +118,7 @@ def main():
     if exe!=tree/"asprodiag" or exe.is_symlink():p.error("not independent ASPRO-DIAG binary")
     marker=json.loads((tree/".ap07-cpu-marker.json").read_text())
     binary=json.loads((tree/".aspro-binary.json").read_text())
-    if marker.get("feature")!="AP07_POST_SCI_D0P" or marker.get("authentic_sci") is not False:
+    if marker.get("feature")!="AP07_SCI_8N1_D0P" or marker.get("authentic_sci") is not False:
         p.error("D0 CPU patch provenance mismatch")
     if binary.get("binary_sha256")!=sha(exe) or binary.get("variant")!="ASPRO-DIAG":
         p.error("independent binary SHA mismatch")
@@ -109,14 +127,14 @@ def main():
     validate_payload(payload)
     results=[launch(exe,a.rom,a.lcd_rom,payload,a.hold,mode) for mode in ("bootstrap","normal")]
     post_sci_ok=(
-        results[0]["status"]=="POST_SCI_DIAG_CPU_LCD_BUS_PASS_VISUAL_PENDING"
+        results[0]["status"]=="SCI_8N1_MODEL_RX_ECHO_CPU_LCD_BUS_PASS_VISUAL_PENDING"
         and results[1]["status"]=="NORMAL_BOOT_PROCESS_OBSERVED_VISUAL_UNVERIFIED"
     )
     combined={
         "increment":"AP07",
-        "status":("POST_SCI_DIAG_LCD_BUS_PASS_VISUAL_REVIEW_PENDING"
+        "status":("SCI_8N1_MODEL_DIAG_LCD_BUS_PASS_VISUAL_REVIEW_PENDING"
                   if post_sci_ok else "DYNAMIC_UNVERIFIED"),
-        "post_sci_diagnostic_pass":post_sci_ok,
+        "sci_8n1_model_pass":post_sci_ok,
         "visual_review_pass":False,
         "authentic_sci_pass":False,
         "bootstrap":results[0],
