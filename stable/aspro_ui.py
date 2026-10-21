@@ -131,11 +131,22 @@ class ProWindow(Gtk.ApplicationWindow):
                 data=FRAME.read_bytes()
                 pixels=self.pix.get_pixels()
                 stride=self.pix.get_rowstride()
-                for y in range(H):
-                    for x in range(W):
-                        r,g,b=FG if data[y*W+x] else BG
-                        p=y*stride+x*3
-                        pixels[p:p+3]=bytes((r,g,b))
+                try:
+                    for y in range(H):
+                        for x in range(W):
+                            r,g,b=FG if data[y*W+x] else BG
+                            p=y*stride+x*3
+                            pixels[p]=r; pixels[p+1]=g; pixels[p+2]=b
+                except TypeError:
+                    rgba=bytearray(stride*H)
+                    for y in range(H):
+                        for x in range(W):
+                            color=FG if data[y*W+x] else BG
+                            p=y*stride+x*3
+                            rgba[p:p+3]=bytes(color)
+                    self.pix=GdkPixbuf.Pixbuf.new_from_bytes(
+                        GLib.Bytes.new(bytes(rgba)),GdkPixbuf.Colorspace.RGB,
+                        False,8,W,H,stride)
                 self.lcd.queue_draw()
         except OSError:pass
         return True
