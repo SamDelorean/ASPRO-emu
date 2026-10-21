@@ -383,7 +383,7 @@ if __name__ == "__main__":
         cpath.write_text(new_c)
         marker["patched_blobs"]=[blob(new_h),blob(new_c)]
         marker["revision"]="BASE_WAIT_ACCESS_FIX"
-        marker_path.write_text(json.dumps(marker,indent=2)+"\\n")
+        marker_path.write_text(json.dumps(marker,indent=2)+"\n")
         print(json.dumps({"status":"AP07_SCI_BASE_WAIT_UPGRADED",
                           "patched_blobs":marker["patched_blobs"]}))
         raise SystemExit(0)
