@@ -200,3 +200,38 @@ Una prueba RAM/post-transferencia no cierra todavía el contrato SCI original.
 La campaña está preparada, pero la intervención remota exige
 autorización explícita (máximo 3 llamadas, sin polling).
 Conservar toda evidencia en Drive y sin publicar ROMs privadas.
+
+
+## AP-07 — incremento de robustecimiento y aceptación instrumentada (20-oct-2026)
+
+**Se mantiene exactamente el alcance autorizado:** bootstrap diagnóstico de AS2K
+adaptado al D0P y Payload-0-Pro. DIAG-ROM-Pro/OS2K-Pro son posteriores.
+Sin Commander ni pruebas MAME en esta intervención.
+
+Correcciones publicadas:
+- `alphasma.cpp`: observación pasiva de los flancos PA7 de LCD0 en
+  bootstrap optativo. Captura el nibble PD[5:2], reconstruye bytes
+  de comando/dato según el RS del Pro, y registra `ASPRO_AP07_LCD0_BYTE`.
+  No modifica la señal que llega al LCD y fuera de bootstrap preserva
+  el callback original `alphasmart_state::port_a_w`.
+- `ap07_campaign.py`: exige evidencia simultánea PC=$008B
+  en el bucle y secuencia de comandos LCD0 28,01,06,0C seguida de
+  `BOOT OK` obtenida *de flancos de bus*, además de screenshot.
+  Esta prueba comprueba tráfico del bus, **no sustituye inspección
+  visual de la imagen del LCD**.
+- Regresión de arranque ROM Pro: se toman instantáneas antes/después de
+  inyectar `A` en el editor, se registran pulsaciones y se compara
+  SHA-256. Cambio de imagen es correlación, no certificación óptica.
+- `ap07_patch_d0_cpu.py`: en nuevas aplicaciones fija hashes de
+  los dos CPU parcheados y exige su identidad en posteriores compilaciones
+  incrementales. Mantiene copia de los originales en ASPRO.
+- `ap07_run_once.sh`: una única campaña con `-j3`; EXIT trap
+  publica logs y estado incluso si falla compilación/ensamblado,
+  y destruye únicamente staging temporal de ROM privada.
+  No gasta Commander en sondeo.
+
+**Clasificación tras revisión de código:** `AP07_STATIC_SOURCE_READY /
+CPU_PATCH_NOT_COMPILED / DIAG_POST_SCI_RUNTIME_PENDING /
+LCD0_BUS_OBSERVATION_PENDING / VISUAL_PENDING / SCI_AUTHENTIC_NOT_IMPLEMENTED`.
+Este incremento NO confirma un PASS de MAME, SCI ni LCD.
+La intervención remota continúa requiriendo autorización específica.
