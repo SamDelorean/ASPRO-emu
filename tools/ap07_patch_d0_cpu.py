@@ -1,10 +1,10 @@
 # license:BSD-3-Clause
 # copyright-holders:Sandro Ronco
 """Bounded ASPRO adaptation from SamDelorean/mame-as3k
- ae2f3ed97d3230e48fb33386230c27434fa94a25, CPU blobs
- 18c27d796c257d79a320639e583cfa52c5a17807 / 25161fb8c9900268b0f37a390dfe695a8f9c94dc.
-ASPRO-only CPU bootstrap post-transfer model; no payload image is bundled. Called in-memory by the existing PAI patcher;
-its build wrapper restores both CPU files on exit.
+ c4e48388ca620472643110db2941ce70aa5f3c07, D0 CPU source Git blobs
+ a7248de563b572aa586b28a8493ddd087dfbb400 / 375c6e1c2a2f74912661da8dc659e23dfcb44f02.
+ASPRO-only D0 CPU post-transfer bootstrap. The independent ASPRO MAME copy
+keeps patched files and pristine backups, while the MAME donor is read-only.
 """
 
 DONOR_ENTRY = r'''void mc68hc11_cpu_device::diagnostic_bootstrap_entry(const uint8_t *data, uint16_t size, uint16_t address)
@@ -147,11 +147,21 @@ if __name__ == "__main__":
         b=v.encode("utf-8")
         return hashlib.sha1(b"blob "+str(len(b)).encode()+b"\0"+b).hexdigest()
     source_ids=(blob(h),blob(c))
+    marker_path=tree/".ap07-cpu-marker.json"
     if "diag_bootstrap_load" in h or "diag_bootstrap_load" in c:
-        if "diag_bootstrap_load" in h and "diag_bootstrap_load" in c and "HC11D0 HPRIO" in c:
-            print(json.dumps({"status":"ALREADY_PATCHED","source_ids":source_ids}))
-            raise SystemExit(0)
-        p.error("partial/unrecognized CPU bootstrap patch")
+        if (not marker_path.is_file() or
+            "diag_bootstrap_load" not in h or "diag_bootstrap_load" not in c or
+            "HC11D0 HPRIO" not in c):
+            p.error("partial or unmarked CPU bootstrap patch")
+        marker=json.loads(marker_path.read_text())
+        if (marker.get("feature")!="AP07_POST_SCI_D0P"
+            or marker.get("patched_blobs")!=list(source_ids)
+            or marker.get("authentic_sci") is not False):
+            p.error("patched D0 source hashes diverged from ASPRO marker")
+        print(json.dumps({"status":"ALREADY_PATCHED_VERIFIED","patched_blobs":source_ids}))
+        raise SystemExit(0)
+    if marker_path.exists():
+        p.error("stale AP07 CPU marker with missing patch")
     expected_h="a7248de563b572aa586b28a8493ddd087dfbb400"
     expected_c="375c6e1c2a2f74912661da8dc659e23dfcb44f02"
     if source_ids != (expected_h,expected_c):
@@ -172,7 +182,8 @@ if __name__ == "__main__":
         if not target.exists():
             target.write_text(original)
     hpath.write_text(new_h); cpath.write_text(new_c)
-    marker={"feature":"AP07_POST_SCI_D0P","source_blobs":source_ids,
+    marker={"feature":"AP07_POST_SCI_D0P","source_blobs":list(source_ids),
+            "patched_blobs":[blob(new_h),blob(new_c)],
             "cpu_patched":True,"authentic_sci":False}
     (tree/".ap07-cpu-marker.json").write_text(json.dumps(marker,indent=2)+"\n")
     print(json.dumps(marker))
