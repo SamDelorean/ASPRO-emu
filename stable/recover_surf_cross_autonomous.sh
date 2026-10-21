@@ -59,6 +59,8 @@ done
 grep -q diag_bootstrap_tx_bit "$MAME/src/devices/cpu/mc68hc11/mc68hc11.cpp"
 # This source alone failed in the previous compile due to Alpine png.h shadowing.
 touch "$MAME/src/emu/recording.cpp"
+# The native musl ABI uses a C runtime. BX_CRT_NONE must therefore be 0:
+# the previous cross attempt entered bx/crtnone.cpp's nonexistent crt0.h.
 STEP=ARMV7_CROSS_HEADER_FIX
 cat >"$WRAP/cc" <<EOF
 #!/bin/sh
@@ -66,7 +68,7 @@ exec "$SDK/bin/arm-linux-gcc" -march=armv7-a -mfpu=vfpv3-d16 -mfloat-abi=hard -i
 EOF
 cat >"$WRAP/cxx" <<EOF
 #!/bin/sh
-exec "$SDK/bin/arm-linux-g++" -march=armv7-a -mfpu=vfpv3-d16 -mfloat-abi=hard -iquote "$MAME/src/lib/util" -I"$SYS/usr/include" -L"$SYS/usr/lib" -Wl,-rpath-link,"$SYS/usr/lib" -Wl,-rpath-link,"$SYS/lib" "\$@" -O0 -fno-inline-functions
+exec "$SDK/bin/arm-linux-g++" -march=armv7-a -mfpu=vfpv3-d16 -mfloat-abi=hard -iquote "$MAME/src/lib/util" -I"$SYS/usr/include" -L"$SYS/usr/lib" -Wl,-rpath-link,"$SYS/usr/lib" -Wl,-rpath-link,"$SYS/lib" "\$@" -O0 -fno-inline-functions -UBX_CRT_NONE -DBX_CRT_NONE=0
 EOF
 chmod 0755 "$WRAP/cc" "$WRAP/cxx"
 export PKG_CONFIG_SYSROOT_DIR="$SYS"
