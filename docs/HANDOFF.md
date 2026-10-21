@@ -308,3 +308,56 @@ No declarar LCD, RX serial o MAME funcionalmente aprobados.
 
 El flujo es un único job `ap07_run_once.sh`, sin gates de
 preproducción, sin pruebas en ASPRO-STABLE, sin DIAG-ROM-Pro/OS2K-Pro.
+
+
+## AP-07 — último incremento de código (2026-10-20, posterior a FAIL GCC)
+
+El usuario exige que el bootstrap se haga funcionar y que se reutilice AS2K sin pasos fragmentados.
+
+**Productos en rama `codex/ap02-aspro-diag-20261019`:**
+- `tools/ap07_patch_d0_cpu.py`: conserva el cargador D0/HPRIO de AS2K,
+  mueve el acceso a campos privados a método de clase base
+  `diagnostic_bootstrap_wait_for_serial` y aporta receptor 8N1 con
+  sincronización FF, longitud 1..192, idle >=40 bits y **emisor
+  TXD por bits start/8 datos/stop** con eco individual por carácter.
+  La actualización de la copia MAME ya marcada se realiza a partir
+  de originales hash-verificados en `.ap07-cpu-original`.
+- `src/mame/skeleton/alphasma.cpp`: host de prueba emite un byte RX
+  UART (10 bits), espera y decodifica de vuelta 10 bits TXD de eco,
+  verifica start/datos/stop, repite byte por byte y finalmente deja
+  RX inactivo antes del salto a RAM. No ejecuta directamente
+  `diag_bootstrap_load` desde el driver.
+- `tools/ap07_campaign.py`: corregidos escapes reales de expresiones
+  regulares de índice RX/eco (`\\d` antes erróneo) y valor esperado
+  del eco de FF (`b"\\xff"` antes erróneo).
+- `tools/ap07_sci_cpp_smoke.py`: crea, compila y ejecuta el
+  código exacto DONOR_SCI + BASE_WAIT bajo un stub que respeta
+  el acceso `private` de la clase base. Cinco pruebas: RX+TXD+idle,
+  sincronización inválida, STOP inválido, 192 bytes y
+  desbordamiento de 193 bytes.
+- Los dos ejecutores integrales corren el smoke C++ antes de
+  invocar el `make` caro y respaldan su log a Drive.
+- `tools/ap07_static_campaign.py`: exige observación TXD real
+  en la lógica del modelo y recepción por el host.
+
+**Validación local independiente:** se compiló con
+`g++ -std=c++20 -Wall -Wextra -Werror -pedantic -O0` un
+programa de prueba aislado que implementa la misma lógica
+RX/TXD y manejo de espera de la clase base; **5/5 PASS**.
+IMPORTANTE: este programa local fue transcrito de los cambios
+publicados y NO es un ensamblado MAME ni una ejecución de
+`ap07_sci_cpp_smoke.py` contra el archivo Git de T;
+para esa prueba exacta sigue pendiente el job.
+
+**Evidencia anterior T:** 15/15 contrato y 18/18 ensamblado
+Payload-0 (121 bytes), pero MAME falló por los accesos
+`private` ya corregidos. No hay aún nuevo compilado
+`ASPRO-DIAG`, ni RX/TXD MAME, ni LCD con BOOT OK.
+`AP07_SCI_BEHAVIORAL_SOURCE_READY / CXX_LOCAL_MODEL_5_OF_5_PASS /
+MAME_COMPILE_PENDING / DYNAMIC_PENDING / SILICON_BOOT_ROM_NOT_EMULATED`.
+
+**Recursos:** última intervención autorizada consumió 3/3
+llamadas Commander. No se ha hecho nueva llamada ni lanzado
+nuevo job, esperando nueva autorización específica para la
+siguiente intervención según la política universal. No tocar
+donantes, no reabrir AP06 ni crear versión estable.
