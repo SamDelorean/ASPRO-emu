@@ -58,12 +58,12 @@ def launch(exe,rom,lcd,payload,hold,mode):
         rep["sci_error"]=any(t in err for t in (
             "ASPRO_AP07_SCI_FRAME_ERROR","ASPRO_AP07_SCI_SYNC_ERROR",
             "ASPRO_AP07_SCI_OVERFLOW","ASPRO_AP07_SCI_BAD_FRAME"))
-        values=re.findall(r"ASPRO_AP07_SCI_RX index=(\\d+) byte=([0-9A-Fa-f]{2})",err)
-        echo=re.findall(r"ASPRO_AP07_HOST_ECHO_CHECK index=(\\d+) value=([0-9A-Fa-f]{2})",err)
+        values=re.findall(r"ASPRO_AP07_SCI_RX index=(\d+) byte=([0-9A-Fa-f]{2})",err)
+        echo=re.findall(r"ASPRO_AP07_HOST_ECHO_CHECK index=(\d+) value=([0-9A-Fa-f]{2})",err)
         received=bytes(int(h,16) for i,h in values)
         rep["sci_rx_exact"]=(received==payload and
             [int(i) for i,h in values]==list(range(len(payload))))
-        expected_echo=b"\\xff"+payload
+        expected_echo=b"\xff"+payload
         echoed=bytes(int(h,16) for i,h in echo)
         rep["sci_echo_exact"]=(echoed==expected_echo and
             [int(i) for i,h in echo]==list(range(len(expected_echo))))
