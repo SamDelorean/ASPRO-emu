@@ -26,42 +26,28 @@ fi
 python3 "$ROOT/tools/ap07_patch_d0_cpu.py" --tree "$TREE"
 for name in make g++ pkg-config; do command -v "$name" >/dev/null || { echo "BLOCKED missing $name"; exit 4; }; done
 pkg-config --exists sdl2 SDL2_ttf fontconfig || { echo "BLOCKED missing MAME SDL2 build dependencies"; exit 4; }
-# One targeted repair is permitted only after the exact observed libemu
-# archive relocation-corruption signature. Never clean/rebuild the entire
-# AS2K donor, and never remove unrelated ASPRO objects or libraries.
+# Recover only archive members independently identified as damaged by
+# GNU ld, within this ASPRO-owned MAME tree. Preserve original archive
+# bytes and let the existing MAME make regenerate the specific member.
+# Bounded to six attempts: never clean/rebuild a donor MAME tree.
 build_mame() {
     CCACHE_DISABLE=1 MAKEFLAGS= make -C "$TREE" -j"$JOBS" TARGET=mame SUBTARGET=asprodiag \
         SOURCES=src/mame/skeleton/alphasma.cpp REGENIE=1 TOOLS=0 USE_QTDEBUG=0
 }
 FIRST="$TREE/.ap07-first-link.log"
-if build_mame >"$FIRST" 2>&1; then
-    cat "$FIRST"
-else
-    cat "$FIRST"
-    if grep -Fq 'libemu.a(dvtext.o): bad reloc symbol index' "$FIRST"; then
-        # The existing AS2K-derived archive may contain a dvtext.o whose
-        # standalone object is absent from this independent build tree.
-        # Force exactly ONE debugger source rebuild through MAME's own
-        # generated makefile; never guess/remove arbitrary object paths.
-        SRC="$TREE/src/emu/debug/dvtext.cpp"
-        LIB="$TREE/build/linux_gcc/bin/x64/Release/libemu.a"
-        BACKUP="$TREE/.ap07-libemu-corrupt-preserved.a"
-        if [[ ! -f "$SRC" || ! -f "$LIB" || -L "$SRC" || -L "$LIB" || -e "$BACKUP" ]]; then
-            echo "AP07_BLOCKED_PRIVATE_DVTEXT_OR_LIBEMU_NOT_SAFE" >&2
-            exit 6
-        fi
-        sha256sum "$SRC" "$LIB" > "$TREE/.ap07-dvtext-pre-repair.sha256"
-        mv -- "$LIB" "$BACKUP"
-        touch -- "$SRC"
-        echo "AP07_REBUILD_FROM_PINNED_DEBUG_DVTEXT_SOURCE" >&2
-        # Recreating libemu.a after touching precisely this one source
-        # instructs MAME make to build dvtext.o and rearchive objects.
-        build_mame
-    else
-        echo "AP07_BLOCKED_UNRECOGNIZED_MAME_BUILD_ERROR" >&2
-        exit 7
+AP07_LINKED=0
+for attempt in 1 2 3 4 5 6; do
+    if build_mame >"$FIRST" 2>&1; then
+        cat "$FIRST"
+        AP07_LINKED=1
+        break
     fi
-fi
+    cat "$FIRST"
+    echo "AP07_LINK_FAILED_ATTEMPT=$attempt" >&2
+    python3 "$ROOT/tools/ap07_archive_repair.py" --tree "$TREE" --link-log "$FIRST" ||
+        { echo "AP07_BLOCKED_UNRECOGNIZED_OR_UNSAFE_LINK_FAILURE" >&2; exit 7; }
+done
+[[ "$AP07_LINKED" == 1 ]] || { echo "AP07_BLOCKED_REPAIR_ATTEMPT_LIMIT" >&2; exit 8; }
 test -f "$TREE/asprodiag" && test -x "$TREE/asprodiag" && test ! -L "$TREE/asprodiag" || {
     echo "BLOCKED missing independent ASPRO send binary"; exit 5;
 }
