@@ -126,6 +126,7 @@ private:
     uint16_t m_ap07_sci_length = 0;
     uint16_t m_ap07_sci_bit_cursor = 0;
     uint16_t m_ap07_sci_verified_echo = 0;
+    uint8_t m_ap07_sci_echo_sample = 0;
     bool m_ap07_sci_streaming = false;
     // Observation only: decodes real Pro PA7 LCD0 strobes, never writes LCD.
     uint8_t m_ap07_lcd_high = 0;
@@ -208,28 +209,55 @@ TIMER_CALLBACK_MEMBER(aspro_send_state::ap07_sci_tick)
     if (!m_ap07_sci_streaming)
         return;
     auto &d0 = downcast<mc68hc11d0_device &>(*m_maincpu);
-    const unsigned total_frame_bits = (unsigned(m_ap07_sci_length) + 1U) * 10U;
-    bool rxd = true;
-    if (m_ap07_sci_bit_cursor < total_frame_bits)
+    // One 8N1 RX frame followed by its independently transmitted 8N1
+    // TXD echo frame. Only after receiving the complete echo may the
+    // bootstrap host send the next program byte.
+    const unsigned total_frame_bits = (unsigned(m_ap07_sci_length) + 1U) * 20U;
+    const unsigned cursor = m_ap07_sci_bit_cursor++;
+    if (cursor < total_frame_bits)
     {
-        const unsigned frame = m_ap07_sci_bit_cursor / 10U;
-        const unsigned bit = m_ap07_sci_bit_cursor % 10U;
-        const uint8_t value = frame ? m_ap07_sci_tx[frame - 1] : 0xff;
-        rxd = (bit == 0) ? false : (bit == 9 ? true : BIT(value, bit - 1));
-    }
-    d0.diag_bootstrap_rx_bit(rxd);
-    ++m_ap07_sci_bit_cursor;
-    // The CPU core independently decoded RX bit cells and emitted an
-    // echo record. Verify it against the HOST's transmitted byte stream.
-    if (d0.diag_bootstrap_echo_count() > m_ap07_sci_verified_echo)
-    {
-        const unsigned frame = m_ap07_sci_verified_echo;
+        const unsigned frame = cursor / 20U;
+        const unsigned phase = cursor % 20U;
         const uint8_t expected = frame ? m_ap07_sci_tx[frame - 1] : 0xff;
-        if (d0.diag_bootstrap_echo_last() != expected)
-            fatalerror("ASPRO_AP07_SCI_ECHO_MISMATCH frame=%u", frame);
-        logerror("ASPRO_AP07_HOST_ECHO_CHECK index=%u value=%02X\n",
-            frame, unsigned(expected));
-        ++m_ap07_sci_verified_echo;
+        if (phase < 10U)
+        {
+            const bool rxd = (phase == 0U) ? false :
+                (phase == 9U ? true : BIT(expected, phase - 1U));
+            d0.diag_bootstrap_rx_bit(rxd);
+        }
+        else
+        {
+            // RX remains idle while the bootstrap CPU shifts its TXD echo.
+            d0.diag_bootstrap_rx_bit(true);
+            const bool txd = d0.diag_bootstrap_tx_bit();
+            const unsigned tx_phase = phase - 10U;
+            if (tx_phase == 0U)
+            {
+                if (txd)
+                    fatalerror("ASPRO_AP07_SCI_TXD_START_MISSING frame=%u", frame);
+                m_ap07_sci_echo_sample = 0;
+            }
+            else if (tx_phase < 9U)
+            {
+                if (txd)
+                    m_ap07_sci_echo_sample |= uint8_t(1U << (tx_phase - 1U));
+            }
+            else
+            {
+                if (!txd || m_ap07_sci_echo_sample != expected ||
+                    d0.diag_bootstrap_echo_count() != m_ap07_sci_verified_echo + 1U)
+                    fatalerror("ASPRO_AP07_SCI_TXD_ECHO_MISMATCH frame=%u", frame);
+                logerror("ASPRO_AP07_HOST_ECHO_CHECK index=%u value=%02X\n",
+                    frame, unsigned(m_ap07_sci_echo_sample));
+                ++m_ap07_sci_verified_echo;
+            }
+        }
+    }
+    else
+    {
+        // End of variable length download: at least four complete
+        // character times of RX idle must precede jumping to RAM.
+        d0.diag_bootstrap_rx_bit(true);
     }
     if (d0.diag_bootstrap_error())
         fatalerror("ASPRO_AP07_SCI_BAD_FRAME_OR_SYNC");
@@ -238,7 +266,7 @@ TIMER_CALLBACK_MEMBER(aspro_send_state::ap07_sci_tick)
         m_ap07_sci_streaming = false;
         m_ap07_sci_timer->adjust(attotime::never);
         if (d0.diag_bootstrap_rx_count() != m_ap07_sci_length ||
-            m_ap07_sci_verified_echo != m_ap07_sci_length + 1)
+            m_ap07_sci_verified_echo != m_ap07_sci_length + 1U)
             fatalerror("ASPRO_AP07_SCI_BAD_TRANSFER_OR_ECHO_COUNT");
         logerror("ASPRO_AP07_SCI_EXECUTION_TRANSFERRED pc=0040 len=%u echoes=%u\n",
             unsigned(m_ap07_sci_length), unsigned(m_ap07_sci_verified_echo));
@@ -258,6 +286,7 @@ void aspro_send_state::machine_reset()
     m_ap07_sci_length = 0;
     m_ap07_sci_bit_cursor = 0;
     m_ap07_sci_verified_echo = 0;
+    m_ap07_sci_echo_sample = 0;
     m_ap07_sci_streaming = false;
     if (m_ap07_sci_timer)
         m_ap07_sci_timer->adjust(attotime::never);
