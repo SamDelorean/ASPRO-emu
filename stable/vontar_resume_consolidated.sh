@@ -19,6 +19,9 @@ for kind in as2k aspro; do
   bash -n "$ROOT/$kind-resume.sh"
 done
 # Secure seed file contains no user secrets and is removed after extraction.
+# Device-only staging script has absolute destinations inside authorized Vontar.
+# Normalize two legacy relative destination entries before interpreting them.
+sed -i 's@../../../Projects/alphasmart/aspro-stable-pack/stable/@/home/spc/Projects/alphasmart/aspro-stable-pack/stable/@g' "$ROOT/stable/seed_assets.py"
 python3 "$ROOT/stable/seed_assets.py"
 rm -f "$ROOT/stable/seed_assets.py"
 echo "AS2K_BEGIN"
