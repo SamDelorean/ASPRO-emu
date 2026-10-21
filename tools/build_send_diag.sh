@@ -39,15 +39,23 @@ if build_mame >"$FIRST" 2>&1; then
 else
     cat "$FIRST"
     if grep -Fq 'libemu.a(dvtext.o): bad reloc symbol index' "$FIRST"; then
-        OBJ="$TREE/linux_gcc/obj/x64/Release/src/emu/debug/dvtext.o"
+        # The existing AS2K-derived archive may contain a dvtext.o whose
+        # standalone object is absent from this independent build tree.
+        # Force exactly ONE debugger source rebuild through MAME's own
+        # generated makefile; never guess/remove arbitrary object paths.
+        SRC="$TREE/src/emu/debug/dvtext.cpp"
         LIB="$TREE/linux_gcc/bin/x64/Release/libemu.a"
-        if [[ ! -f "$OBJ" || ! -f "$LIB" || -L "$OBJ" || -L "$LIB" ]]; then
-            echo "AP07_BLOCKED_DVTEXT_EXPECTED_PRIVATE_FILES_MISSING" >&2
+        BACKUP="$TREE/.ap07-libemu-corrupt-preserved.a"
+        if [[ ! -f "$SRC" || ! -f "$LIB" || -L "$SRC" || -L "$LIB" || -e "$BACKUP" ]]; then
+            echo "AP07_BLOCKED_PRIVATE_DVTEXT_OR_LIBEMU_NOT_SAFE" >&2
             exit 6
         fi
-        echo "AP07_REPAIR_DVTEXT_CORRUPT_ARCHIVE_ONLY" >&2
-        sha256sum "$OBJ" "$LIB" > "$TREE/.ap07-dvtext-pre-repair.sha256"
-        rm -- "$OBJ" "$LIB"
+        sha256sum "$SRC" "$LIB" > "$TREE/.ap07-dvtext-pre-repair.sha256"
+        mv -- "$LIB" "$BACKUP"
+        touch -- "$SRC"
+        echo "AP07_REBUILD_FROM_PINNED_DEBUG_DVTEXT_SOURCE" >&2
+        # Recreating libemu.a after touching precisely this one source
+        # instructs MAME make to build dvtext.o and rearchive objects.
         build_mame
     else
         echo "AP07_BLOCKED_UNRECOGNIZED_MAME_BUILD_ERROR" >&2
