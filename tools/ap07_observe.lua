@@ -5,7 +5,18 @@ local ports=machine.ioport.ports
 local expected=AP07_EXPECTED_HOLD
 local do_boot=AP07_BOOT_MODE==1
 local frame=0
+-- MAME reloads the autoboot script after machine:soft_reset(). Persist
+-- the one-time switch inside this campaign's unique private directory,
+-- otherwise every reload resets again while only ~15 SCI bytes arrived.
+local switch_file="ap07_bootstrap_soft_reset_once.flag"
 local switched=false
+if do_boot then
+    local previous=io.open(switch_file,"rb")
+    if previous then
+        previous:close()
+        switched=true
+    end
+end
 local function log(msg)
     local f=assert(io.open("observations.log","a"))
     f:write("AP07_"..msg.."\n")
@@ -25,6 +36,11 @@ emu.register_frame_done(function()
         switched=true
         if do_boot then
             field:set_value(1)
+            -- Write before resetting; a fresh Lua VM must observe this
+            -- marker and must not schedule another soft reset.
+            local once=assert(io.open(switch_file,"wb"))
+            once:write("BOOTSTRAP_SELECTED_ONCE\n")
+            assert(once:close())
             log("SELECT_BOOTSTRAP")
             machine:soft_reset()
         else log("NORMAL_DEFAULT") end
