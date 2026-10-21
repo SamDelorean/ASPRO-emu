@@ -296,14 +296,18 @@ void aspro_send_state::machine_reset()
     // The AS2K donor's diagnostic POST-transfer entry, selected explicitly.
     // This is NOT an emulation of the D0's internal bootstrap ROM or SCI pins.
     auto &d0 = downcast<mc68hc11d0_device &>(*m_maincpu);
-    const bool selected = BIT(m_bootstrap_mode->read(), 0);
+    // The payload, when explicitly staged into this diagnostic session's
+    // private snapshot directory, selects special bootstrap *at reset*.
+    // Do not depend on Lua field overrides surviving an intermediate reset:
+    // a new Lua VM is created too late for the D0 CPU reset decision.
+    emu_file file(std::string(machine().options().snapshot_directory()), OPEN_FLAG_READ);
+    auto const payload_error = file.open("payload0_pro.bin");
+    const bool selected = BIT(m_bootstrap_mode->read(), 0) || !payload_error;
     d0.set_diag_bootstrap(selected);
     if (selected)
     {
-        emu_file file(std::string(machine().options().snapshot_directory()), OPEN_FLAG_READ);
-        auto const error = file.open("payload0_pro.bin");
-        if (error)
-            fatalerror("AP07 BOOTSTRAP payload0_pro.bin missing in snapshot directory: %s", error.message());
+        if (payload_error)
+            fatalerror("AP07 BOOTSTRAP payload0_pro.bin missing in snapshot directory: %s", payload_error.message());
         auto const file_size = file.size();
         if (file_size < 1 || file_size > 192)
             fatalerror("AP07 BOOTSTRAP invalid Pro payload length %llu (required 1..192)",
