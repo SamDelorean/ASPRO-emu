@@ -114,12 +114,19 @@ private:
     void pc_keyboard_reset();
     void sync_pc_session();
     TIMER_CALLBACK_MEMBER(pc_session_tick);
+    TIMER_CALLBACK_MEMBER(ap07_sci_tick);
     void send_sink_begin();
     void send_sink_codepoint(char32_t codepoint);
     void send_sink_end();
     bool pc_connected() const { return BIT(m_pc_connected->read(), 0); }
     required_ioport m_pc_connected;
     required_ioport m_bootstrap_mode;
+    emu_timer *m_ap07_sci_timer = nullptr;
+    std::array<uint8_t,192> m_ap07_sci_tx{};
+    uint16_t m_ap07_sci_length = 0;
+    uint16_t m_ap07_sci_bit_cursor = 0;
+    uint16_t m_ap07_sci_verified_echo = 0;
+    bool m_ap07_sci_streaming = false;
     // Observation only: decodes real Pro PA7 LCD0 strobes, never writes LCD.
     uint8_t m_ap07_lcd_high = 0;
     uint8_t m_ap07_lcd_high_rs = 0;
@@ -184,6 +191,7 @@ void aspro_send_state::aspro_send(machine_config &config)
 void aspro_send_state::machine_start()
 {
     alphasmart_state::machine_start();
+    m_ap07_sci_timer = timer_alloc(FUNC(aspro_send_state::ap07_sci_tick), this);
     // Lua field overrides may not fire PORT_CHANGED_MEMBER; keep host state
     // independent of ROM PA/PD polling, as in AS2K UI bridge timers.
     timer_alloc(FUNC(aspro_send_state::pc_session_tick), this)->adjust(
@@ -195,6 +203,50 @@ TIMER_CALLBACK_MEMBER(aspro_send_state::pc_session_tick)
     sync_pc_session();
 }
 
+TIMER_CALLBACK_MEMBER(aspro_send_state::ap07_sci_tick)
+{
+    if (!m_ap07_sci_streaming)
+        return;
+    auto &d0 = downcast<mc68hc11d0_device &>(*m_maincpu);
+    const unsigned total_frame_bits = (unsigned(m_ap07_sci_length) + 1U) * 10U;
+    bool rxd = true;
+    if (m_ap07_sci_bit_cursor < total_frame_bits)
+    {
+        const unsigned frame = m_ap07_sci_bit_cursor / 10U;
+        const unsigned bit = m_ap07_sci_bit_cursor % 10U;
+        const uint8_t value = frame ? m_ap07_sci_tx[frame - 1] : 0xff;
+        rxd = (bit == 0) ? false : (bit == 9 ? true : BIT(value, bit - 1));
+    }
+    d0.diag_bootstrap_rx_bit(rxd);
+    ++m_ap07_sci_bit_cursor;
+    // The CPU core independently decoded RX bit cells and emitted an
+    // echo record. Verify it against the HOST's transmitted byte stream.
+    if (d0.diag_bootstrap_echo_count() > m_ap07_sci_verified_echo)
+    {
+        const unsigned frame = m_ap07_sci_verified_echo;
+        const uint8_t expected = frame ? m_ap07_sci_tx[frame - 1] : 0xff;
+        if (d0.diag_bootstrap_echo_last() != expected)
+            fatalerror("ASPRO_AP07_SCI_ECHO_MISMATCH frame=%u", frame);
+        logerror("ASPRO_AP07_HOST_ECHO_CHECK index=%u value=%02X\n",
+            frame, unsigned(expected));
+        ++m_ap07_sci_verified_echo;
+    }
+    if (d0.diag_bootstrap_error())
+        fatalerror("ASPRO_AP07_SCI_BAD_FRAME_OR_SYNC");
+    if (d0.diag_bootstrap_done())
+    {
+        m_ap07_sci_streaming = false;
+        m_ap07_sci_timer->adjust(attotime::never);
+        if (d0.diag_bootstrap_rx_count() != m_ap07_sci_length ||
+            m_ap07_sci_verified_echo != m_ap07_sci_length + 1)
+            fatalerror("ASPRO_AP07_SCI_BAD_TRANSFER_OR_ECHO_COUNT");
+        logerror("ASPRO_AP07_SCI_EXECUTION_TRANSFERRED pc=0040 len=%u echoes=%u\n",
+            unsigned(m_ap07_sci_length), unsigned(m_ap07_sci_verified_echo));
+    }
+    else if (m_ap07_sci_bit_cursor > total_frame_bits + 41U)
+        fatalerror("ASPRO_AP07_SCI_IDLE_TERMINATION_TIMEOUT");
+}
+
 void aspro_send_state::machine_reset()
 {
     alphasmart_state::machine_reset();
@@ -203,6 +255,12 @@ void aspro_send_state::machine_reset()
     m_ap07_lcd_high = 0;
     m_ap07_lcd_high_rs = 0;
     m_ap07_lcd_half = false;
+    m_ap07_sci_length = 0;
+    m_ap07_sci_bit_cursor = 0;
+    m_ap07_sci_verified_echo = 0;
+    m_ap07_sci_streaming = false;
+    if (m_ap07_sci_timer)
+        m_ap07_sci_timer->adjust(attotime::never);
     pc_keyboard_reset();
     send_sink_end();
     m_pc_session_connected = false;
@@ -221,11 +279,16 @@ void aspro_send_state::machine_reset()
         if (file_size < 1 || file_size > 192)
             fatalerror("AP07 BOOTSTRAP invalid Pro payload length %llu (required 1..192)",
                 (unsigned long long)file_size);
-        std::array<uint8_t, 192> image{};
-        if (file.read(image.data(), size_t(file_size)) != size_t(file_size))
+        if (file.read(m_ap07_sci_tx.data(), uint32_t(file_size)) != uint32_t(file_size))
             fatalerror("AP07 BOOTSTRAP truncated payload read");
-        d0.diag_bootstrap_load(image.data(), uint16_t(file_size), 0x0040);
-        logerror("ASPRO_AP07_POST_SCI_BOOTSTRAP_INJECTION size=%u pc=0040 hprio=%02X\n",
+        m_ap07_sci_length = uint16_t(file_size);
+        d0.diag_bootstrap_begin();
+        m_ap07_sci_streaming = true;
+        // D0 E clock 2 MHz / 256 cycles => 7812.5 baud, 8N1. Host
+        // produces physical UART bit cells; CPU decoder handles RX+echo.
+        const attotime cell = attotime::from_ticks(256, 2'000'000);
+        m_ap07_sci_timer->adjust(cell, 0, cell);
+        logerror("ASPRO_AP07_SCI_HOST_START bytes=%u baud=7812.5 hprio=%02X\n",
             unsigned(file_size), unsigned(d0.hprio()));
     }
 }
