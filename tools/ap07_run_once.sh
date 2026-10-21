@@ -19,7 +19,7 @@ finalize() {
     local rc=$?
     trap - EXIT
     printf 'AP07_JOB_EXIT=%s\n' "$rc" > "$OUT/final.status"
-    printf 'AP07_AUTHENTIC_SCI=NOT_IMPLEMENTED\n' >> "$OUT/final.status"
+    printf 'AP07_SCI=8N1_CPU_BEHAVIORAL_MODEL; SILICON_BOOT_ROM_UNVERIFIED\n' >> "$OUT/final.status"
     for name in d0_datasheet_tests.log payload_static_tests.log build.log \
                 campaign.latest.json final.status; do
         [[ -s "$OUT/$name" ]] || continue
