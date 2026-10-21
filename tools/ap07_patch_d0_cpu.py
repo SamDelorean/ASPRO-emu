@@ -74,6 +74,20 @@ void mc68hc11d0_device::diag_bootstrap_load(const uint8_t *data, uint16_t size, 
 
 '''
 
+BASE_WAIT = r'''
+void mc68hc11_cpu_device::diagnostic_bootstrap_wait_for_serial()
+{
+	// A D0 special-mode ROM is processing SCI. Pause instruction fetch
+	// without accessing base-private CPU state from the D0 subclass.
+	m_irq_state = 0;
+	m_irq_asserted = false;
+	m_wait_state = 1;
+	m_stop_state = 0;
+	m_ccr = CC_X | CC_I | CC_S;
+}
+
+'''
+
 DONOR_SCI = r'''
 void mc68hc11d0_device::diag_bootstrap_begin()
 {
@@ -91,11 +105,9 @@ void mc68hc11d0_device::diag_bootstrap_begin()
 	m_diag_sci_synced = false;
 	m_diag_sci_done = false;
 	m_diag_sci_bad = false;
-	m_irq_state = 0;
-	m_irq_asserted = false;
-	m_wait_state = 1;
-	m_stop_state = 0;
-	m_ccr = CC_X | CC_I | CC_S;
+	// CPU execution-control fields are private to the BASE class.
+	// Use its encapsulated WAIT entry, leaving the AS2K loader untouched.
+	diagnostic_bootstrap_wait_for_serial();
 	logerror("ASPRO_AP07_SCI_BOOT_BEGIN hprio=C0 baud=7812.5\n");
 }
 
@@ -217,7 +229,7 @@ def patch_bootstrap(h, c, replace, donor):
     if "diagnostic_bootstrap_entry" in h or "diag_bootstrap_load" in c:
         raise SystemExit("BLOCKED_CPU_PATCH_CONFLICT: partial previous adaptation")
     h = replace(h, "\tvoid set_irq_state(uint8_t irqn, bool state);",
-                "\tvoid set_irq_state(uint8_t irqn, bool state);\n\tvoid diagnostic_bootstrap_entry(const uint8_t *data, uint16_t size, uint16_t address);", "bootstrap entry")
+                "\tvoid set_irq_state(uint8_t irqn, bool state);\n\tvoid diagnostic_bootstrap_entry(const uint8_t *data, uint16_t size, uint16_t address);\n\tvoid diagnostic_bootstrap_wait_for_serial();", "bootstrap entry")
     start = h.index("\nprotected:", h.index("class mc68hc11d0_device :"))
     end = h.index("\nclass mc68hc11e1_device", start)
     h = h[:start] + "\n" + DONOR_D0 + h[end:]
@@ -233,7 +245,7 @@ def patch_bootstrap(h, c, replace, donor):
     c = replace(c, "void mc68hc11e1_device::device_reset()",
                 DONOR_HPRIO + DONOR_SCI + "void mc68hc11e1_device::device_reset()", "HPRIO implementation")
     c = replace(c, "void mc68hc11_cpu_device::execute_set_input(",
-                DONOR_ENTRY + "void mc68hc11_cpu_device::execute_set_input(", "bootstrap execution")
+                DONOR_ENTRY + BASE_WAIT + "void mc68hc11_cpu_device::execute_set_input(", "bootstrap execution")
     return h, c
 
 def extend_existing_d0(h, c, replace):
@@ -283,6 +295,13 @@ def extend_existing_d0(h, c, replace):
     c=replace(c,"void mc68hc11e1_device::device_reset()",
               DONOR_SCI+"void mc68hc11e1_device::device_reset()",
               "existing D0 SCI receiver implementation")
+    h=replace(h,
+              "\tvoid diagnostic_bootstrap_entry(const uint8_t *data, uint16_t size, uint16_t address);",
+              "\tvoid diagnostic_bootstrap_entry(const uint8_t *data, uint16_t size, uint16_t address);\n\tvoid diagnostic_bootstrap_wait_for_serial();",
+              "existing AS2K base diagnostic ABI")
+    c=replace(c,"void mc68hc11_cpu_device::execute_set_input(",
+              BASE_WAIT+"void mc68hc11_cpu_device::execute_set_input(",
+              "existing AS2K base CPU WAIT handler")
     savers="".join("\n\tsave_item(NAME("+n+"));" for n in (
         "m_diag_sci_ram","m_diag_sci_count","m_diag_sci_echo_count",
         "m_diag_sci_echo_last","m_diag_sci_shift","m_diag_sci_bit",
