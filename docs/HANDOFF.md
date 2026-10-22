@@ -487,3 +487,15 @@ identidad binaria; interfaz gráfica todavía sin prueba de apertura.**
 - Nuevo script `stable/build_install_vontar_as2k_method.sh` commit `9d851cf9d975040c6f33fd570405efed1bca8bca`: superpone driver Pro y el CPU D0 previamente ensayado, filtra **solo `asma2k`** de `mame.lst` para retener `asmapro`, reutiliza objetos nativos, hace validaciones a archivos sin SIGPIPE, instala de manera aislada, conserva SHA del AS2K instalado, y restaura fuentes del donante. No ejecuta pruebas con emulador genérico.
 - Iniciado en Vontar por Commander con PID `441562`. Evidencia de compilación hasta `Compiling src/lib/formats/all.cpp`, tras generar los 33 proyectos y archivar `liboptional.a`. **PASO FINAL AÚN NO VERIFICADO**, no afirmar instalación hasta estado `EXIT=0`.
 - Archivos de resultado: `~/.local/share/alphasmart/private/aspro/logs/vontar-as2k-method-reuse.status` y `.log`. Ejecutable previsto `/usr/local/libexec/aspro/aspro-bin`; lanzador `/usr/local/bin/aspro`; menú `/usr/local/share/applications/aspro.desktop`. El AS2K previo permanece en `/usr/local/libexec/as2k/as2k-bin`.
+
+## Vontar — cierre verificado de ASPRO Stable ARM64 (21-oct-2026, 22:53 México)
+
+**Estado: `ASPRO_VONTAR_ARM64_REDUCED_SINGLE_DRIVER_PASS / BUILD_INSTALL_PASS`**.
+
+- Script ejecutado: `stable/build_install_vontar_as2k_method.sh` commit `9d851cf9d975040c6f33fd570405efed1bca8bca`, PID `441562`.
+- Status real en Vontar: `~/.local/share/alphasmart/private/aspro/logs/vontar-as2k-method-reuse.status`: `STEP=PASS`, `EXIT=0`.
+- MAME generó 33 proyectos, compiló `alphasma.cpp`, CPU MC68HC11D0, archivó bibliotecas, **1 source file y 1 driver**, enlazó `aspro`, validó core, instaló con el launcher en `/usr/local/bin/aspro` y GTK en `/usr/local/libexec/aspro/frontend`.
+- Núcleo instalado en `/usr/local/libexec/aspro/aspro-bin` (~64 MB), SHA256 `2c0282172b43cb1d4d33c92d32abe2505a77f99b65bbf36aeb6181e431eb12b1`; comparación binaria contra construido realizada en el script.
+- `-listfull` comprobó exclusivamente `asmapro` y descartó `asma2k`, sin tuberías `grep -q` propensas a SIGPIPE 141.
+- Instalación AS2K anterior preservada y verificada por SHA, restauración de las cuatro fuentes originales MAME tras el build comprobada por salida 0.
+- Validación estática del frontend GTK y ROM/payload con digests PASS. **No se ha realizado una prueba manual interactiva de la ventana GTK, conexión PC ni bootstrap sobre Vontar**; no inventar ese PASS.
