@@ -7,7 +7,7 @@ CORE=$1
 [ -s "$CORE" ] && [ -x "$CORE" ] || { echo "Unverified ASPRO binary"; exit 2; }
 [ "$(id -u)" -eq 0 ] || { echo "Root required (sudo -n)"; exit 2; }
 DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
-install -d -m 0755 /usr/local/libexec/aspro/frontend /usr/local/bin /usr/local/share/applications
+install -d -m 0755 /usr/local/libexec/aspro /usr/local/libexec/aspro/frontend /usr/local/bin /usr/local/share/applications
 install -m 0755 "$CORE" /usr/local/libexec/aspro/aspro-bin.next
 mv -f /usr/local/libexec/aspro/aspro-bin.next /usr/local/libexec/aspro/aspro-bin
 install -m 0755 "$DIR/aspro_ui.py" /usr/local/libexec/aspro/frontend/aspro_ui.py
