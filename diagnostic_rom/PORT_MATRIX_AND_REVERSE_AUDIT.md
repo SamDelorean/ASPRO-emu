@@ -61,14 +61,14 @@ Archivo recibido desde Drive: `ASPRO/asmapro/alphasmartpro212.rom`. Solo se regi
 
 ## 5. Ghidra y evidencias que faltan (no inventar resultados)
 
-Ghidra del AS2K está localizado en Drive, pero no se ha demostrado aún un proyecto Ghidra **ASPRO 2.1.2 fijado a su SHA**. Hay un listado tercero `AlphaSmart001-20230301b.lst.txt` y un `AlphaSmart001.HEX` en la carpeta Pro; sin comprobar que su binario sea la misma versión **no usar nombres de funciones ni saltos del listado como verdades para ROM 2.1.2**.
+Ghidra del AS2K está localizado en Drive, pero no se ha demostrado aún un proyecto Ghidra **ASPRO 2.1.2 fijado a su SHA**. Hay un listado tercero `AlphaSmart001-20230301b.lst.txt` y un `AlphaSmart001.HEX` en la carpeta Pro. **Ya se verificó que AlphaSmart001.HEX NO es la ROM Pro 2.1.2**: contiene 512 registros Intel HEX de 16 B con checksums válidos, total **8192 B**, rango de direcciones **0x0000–0x1FFF**; SHA-256 del contenido `0c62f7f97d9b9df9243f6782ad3f4d64b89d33d6468ac8d99cb2b2f5c9d5e093`. Aunque ambos comienzan con `8E 00 FF` al compararlos con ROM Pro en $C000, solo coinciden **123/8192 bytes (1.5%)** contra el bloque $C000–$DFFF. Esta información **excluye reutilizar direcciones, símbolos o hipótesis del listado 2023** como si fueran de 2.1.2 sin un análisis específico de la fuente; puede corresponder a otro firmware, pero esa identificación sigue pendiente.
 
 Investigar de forma prioritaria y agrupada en **Ghidra Pro**:
 - RESET $C000, vectores $FFE0–$FFFF y registro/configuración PA/PD, controles RAM y ROM.
 - Banco PA3/PA5; separación acceso a RAM y pulso LCD1; señales seguras para prueba.
 - Tabla ROM por versión y ubicación de la zona activa $C000–$FFFF; leer en $8000/$A000 con oráculo no dependiente de material de relleno.
 - Rutinas de bootstrap Pro y entrada a $0040, delimitación entre RAM interna y externa y pila.
-- Originalidad / revisión de `AlphaSmart001.HEX` y listado previo a tomar símbolos; procedencia.
+- Procedencia de `AlphaSmart001.HEX` (8 KiB, no idéntico a Pro 2.1.2) y posible valor del listado 2023 **solo como referencia comparativa, nunca símbolos definitivos**.
 
 Las observaciones Ghidra faltantes no impiden comenzar el port **de contratos de transporte/BDS/monitor** ya demostrados. Los experimentos requieren autorización y jamás se declaran ejecutados sobre la base de esta matriz.
 
