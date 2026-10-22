@@ -436,3 +436,45 @@ sin polling de procesos.
 ## Surf — reejecución nativa musl v2, 21-oct-2026
 
 Autorización: máximo 3 llamadas Commander Surf. El script `stable/deploy_surf_native_autonomous.sh` corregido en `a1b496a60031c526aa6d334e5576dd17b1f2ba8f` se descargó y lanzó en Surf con PID **5451** (primera llamada). Segunda llamada: proceso `make -j1` y `cc1plus` activos (PID make 5690), generación de `mameaspro/gmake-linux` 30/30, `alphasma.cpp` compilado, `libmame_aspro.a` archivado, y `mc68hc11.cpp` en compilación. El estado `COMPILE_NATIVE_ARMV7_J1 / EXIT=2` en archivo seguía siendo **del intento anterior**, porque el nuevo script solo escribe estado al finalizar. Ningún binario ASPRO todavía instalado en esa segunda comprobación. La tercera llamada Commander sigue reservada para la verificación final. No gastar en sondeos repetidos ni iniciar otro build, sin `make clean`. El mismo script autónomo valida ROM/payload, binario ARMv7, MAME y ROM boot antes de instalar; si falla, instala nada. **No afirmar PASS de build/install hasta ver el estado final y SHA.**
+
+## Surf — compilación e instalación nativa: resultado comprobado (21-oct-2026, 22:18 México)
+
+**Compilación ARMv7 musl PASS; instalación del núcleo efectuada y verificada por
+identidad binaria; interfaz gráfica todavía sin prueba de apertura.**
+
+- Informe anterior de compilación:
+  `~/.local/share/alphasmart/private/aspro/logs/surf-native-build-install.status`
+  = `STEP=INSTALL_PRO_STABLE_SEPARATELY; EXIT=6`.
+  **No** equivale a error de compilación: log incluye
+  `Linking aspro...`, prueba `asmapro` con ROM real
+  (`Average speed: 491.49%`, exit 0), y
+  `ASPRO_STABLE_INSTALLED: /usr/local/bin/aspro`.
+- Causa del `EXIT=6`: el instalador creó implícitamente
+  `/usr/local/libexec/aspro` con permisos `0700` por `umask 077`.
+  Usuario Surf no podía atravesar directorio al validar `cmp`; el
+  archivo raíz sí existía. Se corrigió sobre Surf con
+  `sudo -n chmod 0755 /usr/local/libexec/aspro` y
+  `sudo -n chmod 0755 /usr/local/libexec/aspro/frontend`.
+- `cmp` ejecutado desde el usuario normal confirmó igualdad del núcleo
+  compilado `~/Projects/alphasmart/as2k-surf-native/sources/mame-as3k/aspro`
+  y el instalado `/usr/local/libexec/aspro/aspro-bin` (ambos
+  SHA256 `aa4c96cc8b3c0b5ea61f96622ae354627a69482dc752b1296e6385de7c376223`).
+- `/usr/local/libexec/aspro/aspro-bin -validate`: **PASS**, sin errores.
+  `-listfull`: entrada `asmapro "AlphaSmart Pro"` verificada.
+- `/usr/local/bin/aspro`: ejecutable instalado de 92 bytes.
+  `/usr/local/share/applications/aspro.desktop`: instalado.
+- `python3 -m py_compile` lanzó **Permission denied** al intentar crear
+  `frontend/__pycache__` en directorio de sistema root, operación
+  separada de la ejecución normal de Python. No interpretarlo como
+  fallo demostrado de GTK; tampoco reclamar GUI PASS sin prueba gráfica.
+  La instalación fuente en repo se corrigió para crear explícitamente el
+  directorio padre con permisos `0755` en commit
+  `eaeb8b03fc32009477313f91767e60211c54aecd`.
+- Intento adicional de Commander para verificar GTK/ROM y respaldo
+  binario fue **bloqueado por controles de seguridad**, no ejecutado.
+- La ROM LCD `ks0066_f05.bin` provoca advertencia
+  `ROM NEEDS REDUMP` en MAME, que no impidió prueba de arranque.
+- **No recompilar** ni reemplazar automáticamente el ejecutable ya
+  validado. Pendiente únicamente prueba gráfica interactiva de
+  `/usr/local/bin/aspro` por usuario Surf, funcionamiento de pantalla,
+  teclado, conexión PC y bootstrap en la UI. Mantener AS2K intacto.
