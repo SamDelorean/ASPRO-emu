@@ -53,3 +53,13 @@ ROM Pro 2.1.2 privada desde `Drive/asmapro/alphasmartpro212.rom`: 32768 B, SHA1 
 **Estado exacto hoy**: `FOUNDATIONS_VERIFIED / ROM_STATIC_AUDIT_PASS / PORT_MATRIX_CREATED / ASPRO_DIAG_ROM_IMPLEMENTATION_PENDING / GHIDRA_PRO_PENDING / NEW_DYNAMIC_TESTS_NOT_RUN`. No se ha compilado o cargado una nueva ROM de diagnóstico Pro, ni usado Commander. El Excel existe en Drive. Ningún resultado de los nuevos tests se afirma PASS.
 
 Para retomar desde cualquier chat, leer ESTE HANDOFF, `diagnostic_rom/PORT_MATRIX_AND_REVERSE_AUDIT.md`, `docs/AP07_FUNCTIONAL_PASS_20261020.md`, `docs/ROM_HARDWARE_MAP.md`, `AS2K-probe-tools/docs/FUNCTIONAL_PROTOCOL.md`, `BDS_PROTOCOL_V0_1.md`, `I0_2_MONITOR_OVERLAY_RAM_FEASIBILITY.md`, junto con el Excel rector, ANTES de planear/ejecutar. Ya están fijados repositorios y carpetas.
+
+## 7. Incremento de auditoría de fuentes completado después del handoff inicial
+
+Inspección de los ensambladores originales de `AS2K-probe-tools@e3b3a3b41e541cf70c823c2a2c6d135ab48e2616`:
+- Monitor HC11 (172 B, SHA-256 `076c2244d1ce86cbc7ab79a7f5ecbabc7f1f42229f28f5dbb68b0c52422b8896`): solamente SCI $002E/$002F y RAM interna; linker garantiza MON_BDS=$00DD, MON_TX=$00E9, monitor $0090–$00EB, state $00EC–$00EF y stack $00F0–$00FF. Pila máxima DONANTE smoke 7 B. **CANDIDATO REUSO LITERAL, NO PRO PASS**.
+- Overlay A 23 B (SHA `dfed5bb5f048913207e5be6aa28826fe01c1994ef1d1382661d7793c9470dad2`), B 80 B (`72bdf88f63bab9e8b4bc204cc91e2ffbe9e89c8cc896409f913ef933438b2d4d`), C 31 B (`c1ebc01c7e274b0594402a44cfaf4ab28a1ebc6767371166d35d2cbe67d51be9`). Solo JSR MON_TX $00E9, BDS A001/B002/C003, sin dependencia MMIO externo. **306 B** combinados con monitor son candidatos a reutilizar bytes idénticos.
+- L2.0B a L2.4 utilizan PORTA y DUT $018D/$7FFF/$0100/$7FEA: revisar banco y seguridad en Pro. L2.5 lee desde $8000 y firmas AS2K A1C7/B65F: oráculo Pro obligatorio. L2.6 ZPSD excluido.
+- **Ver detalle y clasificación definitiva provisional** en `diagnostic_rom/PORT_MATRIX_AND_REVERSE_AUDIT.md` sección 7 y Excel rector actualizado, ID sin cambios `1wzolTxo3QXIvKaCuf9XjueuO-n8PkWLI`.
+
+**Nuevo siguiente incremento de mínimo retrabajo:** probar específicamente la reusabilidad **byte-identical** del monitor y A/B/C en Pro con BDS y ABI completo, no reconstruir ninguna imagen antes de detectar divergencia. Complementar la ingeniería Ghidra de bancos/MMIO únicamente en paralelo con ese port, no crear más gates.
