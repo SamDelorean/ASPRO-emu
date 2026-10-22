@@ -63,3 +63,20 @@ Inspección de los ensambladores originales de `AS2K-probe-tools@e3b3a3b41e541cf
 - **Ver detalle y clasificación definitiva provisional** en `diagnostic_rom/PORT_MATRIX_AND_REVERSE_AUDIT.md` sección 7 y Excel rector actualizado, ID sin cambios `1wzolTxo3QXIvKaCuf9XjueuO-n8PkWLI`.
 
 **Nuevo siguiente incremento de mínimo retrabajo:** probar específicamente la reusabilidad **byte-identical** del monitor y A/B/C en Pro con BDS y ABI completo, no reconstruir ninguna imagen antes de detectar divergencia. Complementar la ingeniería Ghidra de bancos/MMIO únicamente en paralelo con ese port, no crear más gates.
+
+
+## 8. Reanudación 2026-10-22 — discriminación adicional y continuidad
+
+Se han releído el Excel rector *existente* en Drive y los manifiestos originales fijados del donante. No se crearon libros alternativos, no se modificó AS2K, no se usó Commander, no se reconstruyó MAME ni se ha ejecutado una ROM-diagnóstico Pro nueva.
+
+**Compilación AS2K que se pretende conservar literalmente**: monitor 172 B SHA256 `076c2244d1ce86cbc7ab79a7f5ecbabc7f1f42229f28f5dbb68b0c52422b8896`; overlays A 23 B SHA `dfed5bb5f048913207e5be6aa28826fe01c1994ef1d1382661d7793c9470dad2`, B 80 B SHA `72bdf88f63bab9e8b4bc204cc91e2ffbe9e89c8cc896409f913ef933438b2d4d` y C 31 B SHA `c1ebc01c7e274b0594402a44cfaf4ab28a1ebc6767371166d35d2cbe67d51be9`. Verificados contra manifiestos Git `payloads/monitor/generated/monitor.json` y `payloads/l2_0/generated/overlays.json`. Símbolos MON_BDS=$00DD y MON_TX=$00E9; ventana overlay $0040–$008F, monitor $0090–$00EB, estado $00EC–$00EF, pila $00F0–$00FF; pico de pila donante smoke 7 B (no medido en Pro).
+
+**Hallazgo nuevo en la instrumentación ASPRO-DIAG**: el driver `src/mame/skeleton/alphasma.cpp` en rama de port, blob `14796d807aa731035d572bc5c3ef1e00bf970887`, acepta `payload0_pro.bin` de 1..192 B al RESET y el `ap07_sci_tick` verifica eco únicamente mientras dura esa descarga. Tras `diag_bootstrap_done()`, cambia `m_ap07_sci_streaming=false` y detiene el temporizador. El código examinado **no demuestra aún un puente host SCI después de arrancar el monitor**, necesario para transmitir LOAD/overlays y recoger READY/BDS. Antes de adaptar HC11, revisar y reutilizar un transporte existente del donante AS2K o del harness; si no existe, agregar el **mínimo puente de UART post-bootstrap a ASPRO-DIAG**, manteniendo intactos los bytes del monitor. No confundir entrada inicial de 172 B con aceptación de A-B-C-B-A. Es una brecha de *harness*, no prueba de incompatibilidad CPU/ROM.
+
+**Separación Git**: se comprobó que existe `SamDelorean/aspro-probe-tools` (privado, sin commits, tamaño 0), candidato natural a repositorio propio de producto. Intento de crear el primer README mediante conector GitHub devolvió HTTP 422 (`sha wasn't supplied`) al estar vacío. **No se inicializó** ni se trasladó código; mantener por ahora la rama ASPRO-emu fijada como autoridad y no crear un repositorio duplicado. La inicialización técnica de ese Git queda pendiente sin bloquear el port.
+
+**Ingeniería Ghidra restante**: proyecto Ghidra Pro 2.1.2 ligado al SHA privado aún no demostrado; tampoco hay medida física del efecto PA5 banco/LCD1. El listado tercero `AlphaSmart001.HEX` sigue excluido como mapa Pro 2.1.2. Revisar driver/fotos/mapa y construir oráculos solamente para diferencias probadas. No inventar emulación de fallas eléctricas.
+
+**Próxima ejecución integrada y única**: calificación UART post-bootstrap -> monitor READY -> overlays A-B-C-B-A con BDS exacto, checksum, retorno READY y stack interno -> variantes L2 sujetas a RAM/ROM Pro -> cierre de evidencia y actualización del mismo Excel rector. Exclusivamente `asprodiag`. Commander/T requiere nueva autorización expresa; ninguna prueba funcional nueva ejecutada en esta reanudación.
+
+**Estado**: `STATIC_RECONCILIATION_PASS / MONITOR_OVERLAY_BINARY_REUSE_CANDIDATE / ASPRO_RUNTIME_NOT_TESTED / POST_BOOT_SCI_HOST_BRIDGE_TO_VERIFY / GHIDRA_PRO_PENDING`. El libro rector sigue en https://docs.google.com/spreadsheets/d/1wzolTxo3QXIvKaCuf9XjueuO-n8PkWLI/edit ; handoff privado en https://docs.google.com/document/d/19xFk25eEamVXA9-ZMINd0YCaQbpVNe4Z7Y0EumXs3Io/edit .
