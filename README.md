@@ -1,39 +1,70 @@
-# ASPRO-emu
+# ASPRO-emu — AlphaSmart Pro Stable
 
-Emulador reducido de AlphaSmart Pro basado en **MAME 0.289 y el driver existente `src/mame/skeleton/alphasma.cpp`**. **Único entorno de desarrollo ASPRO-emu; AS2K es referencia de código en sólo lectura y no se usa para compilar el Pro.** El trabajo continúa el flujo técnico del emulador AS2K, sin reconstruir una CPU, LCD o matriz de teclado ya implementados.
+**Versión estable de código fuente: v0.1.0 (21 de octubre de 2026).**
+Emulador reducido basado en MAME para AlphaSmart Pro 2.1.2, separado de
+AS2K Stable y del banco de pruebas ASPRO-DIAG.
 
-**Decisión arquitectónica (19-oct-2026):** desarrollar y validar primero ASPRO-DIAG como variante independiente. NO incorporar Pro a AS2K ni crear producto público estable durante esta etapa. Al terminar la calificación funcional de DIAG, el usuario decidirá entre ampliar AS2K o conservar ASPRO separado. No anticipar ni automatizar esa decisión.
+[**Producto Stable, menús e instalación Vontar/Surf**](stable/README.md) ·
+[**Manifiesto y SHA verificados**](stable/RELEASE_MANIFEST.md) ·
+[**Continuidad del proyecto**](docs/HANDOFF.md) ·
+[**Historia de ASPRO-DIAG**](docs/DIAG_RESEARCH_README_20261020.md)
 
-**Único entorno autorizado para pruebas:** `ASPRO-DIAG` (`asprodiag`). Una eventual versión estable dependerá de la decisión posterior del usuario y nunca se utilizará como banco de pruebas.
+## Estado de las compilaciones e instalaciones
 
-## Estado funcional — 20-oct-2026
+| Equipo | Plataforma | Resultado |
+| --- | --- | --- |
+| **Vontar** | Armbian **aarch64** | ASPRO reducido: compilación, validación e instalación **PASS** (`EXIT=0`) |
+| **Surface RT (Surf)** | postmarketOS **ARMv7/musl** | Compilación nativa y smoke con ROM **PASS**; binario instalado y comparado **PASS** tras reparación de permisos |
+| **ASPRO-DIAG** | Entorno de diagnóstico aislado | Ensayos funcionales previos documentados en `docs/AP07_*` |
 
-**AP-02 a AP-04: PASS funcional emulado acotado.** Se reutilizó el motor MAME-DIAG de AS2K como una copia ASPRO independiente (sin recompilación ni modificaciones a AS2K). ROM Pro 2.1.2: arranque y LCD/teclado básicos PASS visual (AP-03); ocho archivos F1–F8 con caracteres `a`–`h` diferenciados y recuperación idéntica después de salir y volver a iniciar la emulación compartiendo exclusivamente su NVRAM privada (AP-04). [Evidencias AP-04](docs/AP04_FILES_NVRAM_FUNCTIONAL_EVIDENCE.md).
+La fuente instalada en ambos equipos se contrastó directamente con
+los **mismos cinco blobs Git**: driver `stable/alphasma.cpp`,
+frontend `stable/aspro_ui.py`, gestor `stable/aspro_session.py`
+y los dos archivos `stable/proven_hc11/mc68hc11.*`.
+Véase [manifest](stable/RELEASE_MANIFEST.md).
 
-La clasificación automática de `run_diag.py` permanece conservadora (`functional_pass:false`) porque no interpreta el texto LCD: el PASS calificado aquí procede de capturas reales inspeccionadas y hashes de ocho parejas write/verify. No valida hardware físico, otras funciones de Writer, impresión ni todas las modalidades del firmware. ASPRO-STABLE/integración AS2K siguen sujetos a decisión del usuario.
+Los resultados de compilación, validación e instalación **no
+constituyen un PASS de uso interactivo posinstalación**. Aún deben
+verificarse con pantalla real la interfaz, teclado, conexión PC y
+bootstrap SCI en ambas máquinas.
 
-## Resultados disponibles
+## Interfaz pública incluida
 
-- Firmware principal: AlphaSmart Pro 2.1.2, 32 KiB, SHA-1 `c3c6a421c9ced92db97431d04b4a3f09a39de716`; datos **privados fuera de Git**.
-- LCD externo: KS0066 F05 CGROM de 4096 bytes localizada en Drive, SHA1 `0196e871584ee5d370856e7307c0f9d1466e3e51` (necesaria para arranque fiel; privada).
-- Reutilización: MAME ya proporciona CPU MC68HC11D0, 2 × KS0066 (LCD 40×4), matriz de teclado 16 columnas, 128 KiB NVRAM y mapa Pro.
-- Archivo de origen recuperado: [SamDelorean/mame-as3k, `src/mame/skeleton/alphasma.cpp`](https://github.com/SamDelorean/mame-as3k/blob/c4e48388ca620472643110db2941ce70aa5f3c07/src/mame/skeleton/alphasma.cpp).
-- Estado AP-02: **STATIC_PASS / COMPILE_PENDING / DYNAMIC_PENDING**. Preparación integral y pruebas sintéticas completas; ningún arranque HC11 ni PASS funcional reclamado. Véase [ejecución y resultados](docs/AP02_EXECUTION_AND_RESULTS.md).
+El frontend GTK3 proporciona LCD virtual 240 × 36, teclado y menús:
+**Archivo**, **Máquina**, **Ver**, **Configuración** y **Ayuda**.
+Entre sus funciones están selección de ROM y payload bootstrap, modo
+normal, captura LCD, reinicio, PC conectado/desconectado, escalado y
+pantalla completa. El firmware privado debe estar disponible por
+separado: **no se distribuyen ROMs con este repositorio**.
 
-## Uso (sin alterar el MAME canónico)
+## Compilación e instalación
 
-```bash
-python3 tools/rom_audit.py --rom /ruta/privada/alphasmartpro212.rom --json
-python3 tools/prepare_mame.py --source /ruta/verificada/referencia-Git-MAME
-bash tools/build_diag.sh build/mame 2
-python3 tools/run_diag.py --rom /ruta/privada/alphasmartpro212.rom --lcd-rom /ruta/privada/ks0066_f05.bin --bin build/mame/asprodiag --seconds 8 --capture auto
-python3 tools/static_selftest.py
-```
+Los dos equipos tienen **constructores nativos distintos**:
 
-La construcción reducida requiere una exportación propia verificada en **ASPRO-emu/build/mame**, nunca el árbol AS2K. `prepare_mame.py` exporta el commit fijado desde objetos Git de una referencia local en sólo lectura, sin copiar sus cachés ni archivos privados; `build_diag.sh` rechaza destinos ajenos o sin identidad. No se descargan ni reinstalan toolchains. La construcción reducida usa `make SUBTARGET=asprodiag SOURCES=src/mame/skeleton/alphasma.cpp REGENIE=1` del propio MAME; evita volver a importar o modificar su código, y utiliza el mismo driver del que ya procede el AS2K. Solo crea resultados de compilación de subtarget. Para reducir aún más el binario a **un único sistema Pro**, se podrá aplicar `SOURCEFILTER` del MAME **solo después de comprobar su contrato**; no sustituir la primera ejecución por esa optimización.
+- Vontar: `stable/build_install_vontar_as2k_method.sh`, recupera la
+  arquitectura del constructor AS2K Stable y genera **solo asmapro**.
+- Surf: `stable/deploy_surf_native_autonomous.sh`, ejecutado
+  **directamente en Surf** con `make -j1` y la adaptación
+  comprobada de `bx` para musl; **no usar T640 para compilar Surf**.
 
-El runner prepara un `asmapro.zip` temporal con la ROM original, de uso local exclusivamente, y genera logs y estado en un directorio de diagnóstico separado. La ROM nunca se versiona, no se imprime y no se altera.
+Los scripts requieren el árbol MAME donante ya preparado y los archivos
+privados del usuario en sus ubicaciones existentes. Consultar
+[las instrucciones completas](stable/README.md) antes de ejecutarlos.
+Ambas instalaciones crean el lanzador `/usr/local/bin/aspro` y
+entrada de menú **ASPRO Emulator**, sin reemplazar AS2K.
 
-**Los scripts no llaman Commander.** `tools/ap02_run_once.sh` agrupa preparación, compilación y ejecución auténtica cuando el usuario autorice la intervención T640 y estén disponibles sus insumos privados; invocarlo sí ejecuta DIAG. Véase la instrucción única en [AP-02](docs/AP02_EXECUTION_AND_RESULTS.md). Ningún log, ROM, NVRAM, estado o captura privada se debe publicar en Git.
+**No confundir con los scripts experimentales históricos** de
+compilación cruzada o recuperación, que permanecen solo como evidencia.
 
-Véase [plan](docs/MASTER_PLAN.md), [mapa](docs/ROM_HARDWARE_MAP.md), [procedencia](docs/SOURCE_PROVENANCE.md) y [continuidad](docs/HANDOFF.md).
+## Procedencia y privacidad
+
+El código MAME y HC11 conserva sus avisos de autoría y licencia; las
+adaptaciones ASPRO se proporcionan como código fuente. Excluidos de
+Git: ROM AlphaSmart Pro, ROM LCD, payload binario, imágenes privadas,
+NVRAM, copias de SRAM, credenciales y registros con datos privados.
+Las huellas de los materiales privados se documentan para permitir
+comprobación local, no redistribución.
+
+Consulta el [plan técnico](docs/MASTER_PLAN.md),
+[mapa de hardware](docs/ROM_HARDWARE_MAP.md) y
+[documentación de procedencia](docs/SOURCE_PROVENANCE.md).
