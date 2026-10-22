@@ -14,7 +14,9 @@ PRIVATE="$HOME/.local/share/alphasmart/private/aspro"
 LOG="$PRIVATE/logs/surf-native-build-install.log"
 STATUS="$PRIVATE/logs/surf-native-build-install.status"
 TARGET=/usr/local/libexec/aspro/aspro-bin
-REF=11cf0563daa46db81d9d4ae7cc02cbeb4eaf239f
+# Verified public source bundle (same driver, HC11 and GTK as installed in Surf
+# and Vontar, plus the corrected root-directory permissions in installer).
+REF=eaeb8b03fc32009477313f91767e60211c54aecd
 mkdir -p "$APP" "$CPU" "$PRIVATE/logs" "$PRIVATE/binaries/stable-armv7" "$PREFIX/backup"
 exec >"$LOG" 2>&1
 STEP=PREFLIGHT
@@ -173,7 +175,12 @@ STEP=VALIDATE_NATIVE_BINARY
 LC_ALL=C file "$MAME/aspro" | grep -Eq 'ELF 32-bit.*ARM'
 LC_ALL=C readelf -h "$MAME/aspro" | grep -Eq 'Machine:.*ARM'
 "$MAME/aspro" -validate
-"$MAME/aspro" -listfull | grep -q 'asmapro'
+# Avoid SIGPIPE with status 141 on long driver listings: validate from file.
+"$MAME/aspro" -listfull > "$PRIVATE/logs/surf-aspro-drivers.txt" 2>&1
+grep -Eq '^asmapro[[:space:]]' "$PRIVATE/logs/surf-aspro-drivers.txt"
+if grep -Eq '^asma2k[[:space:]]' "$PRIVATE/logs/surf-aspro-drivers.txt"; then
+ echo "BLOCKED_AS2K_DRIVER_IN_ASPRO_STABLE"; exit 5
+fi
 STEP=TEST_PRIVATE_FIRMWARE_BOOT
 mkdir -p "$PREFIX/test/roms" "$PREFIX/test/empty" "$PREFIX/test/snap"
 python3 - "$PRIVATE" "$PREFIX/test/roms" <<'PY'
@@ -199,7 +206,8 @@ sudo -n sh "$APP/install_stable.sh" "$MAME/aspro"
 INSTALLED=1
 cmp -s "$MAME/aspro" "$TARGET" ||
  { echo "FAIL_DIFFERENT_INSTALLED_ASPRO_BINARY"; exit 6; }
-"$TARGET" -listfull | grep -q 'asmapro'
+"$TARGET" -listfull > "$PRIVATE/logs/surf-aspro-installed-drivers.txt" 2>&1
+grep -Eq '^asmapro[[:space:]]' "$PRIVATE/logs/surf-aspro-installed-drivers.txt"
 test -x /usr/local/bin/aspro && test -f /usr/local/share/applications/aspro.desktop
 cp -p "$TARGET" "$PRIVATE/binaries/stable-armv7/aspro-bin"
 cp -p /usr/local/libexec/as2k/as2k-bin "$PRIVATE/binaries/stable-armv7/as2k-bin.unchanged"
