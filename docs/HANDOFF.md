@@ -478,3 +478,12 @@ identidad binaria; interfaz gráfica todavía sin prueba de apertura.**
   validado. Pendiente únicamente prueba gráfica interactiva de
   `/usr/local/bin/aspro` por usuario Surf, funcionamiento de pantalla,
   teclado, conexión PC y bootstrap en la UI. Mantener AS2K intacto.
+
+## Vontar ARM64 — recuperación con constructor AS2K Stable (21-oct-2026)
+
+- Recuperado procedimiento original AS2K: `SamDelorean/AS2K-Emulator/scripts/build-stable-core.sh`, que realiza overlay de driver/HC11, filtra `mame.lst` hasta máquina exclusiva y restaura la fuente. Instalador independiente AS2K con GTK y lanzador bajo `/usr/local`.
+- Verificado en Vontar: binario ASPRO anterior enlazado de 66,127,296 bytes, ELF aarch64; `-listfull` devolvió `asmapro` exit 0. SHA-256 `59f4cc88762e9db9fc9ee250b7024606ae287b5666df03cc0b12d032a4f884dd`. ROM Pro, LCD y payload tenían SHA esperados; GTK3 y sudo disponibles.
+- Fallo histórico `EXIT=141` en ASPRO fue el uso de `-listfull | grep -q` bajo `pipefail`, no fallo del binario; AS2K había fallado por incluir `asmapro` en su lista reducida. No reintentar esas rutas.
+- Nuevo script `stable/build_install_vontar_as2k_method.sh` commit `9d851cf9d975040c6f33fd570405efed1bca8bca`: superpone driver Pro y el CPU D0 previamente ensayado, filtra **solo `asma2k`** de `mame.lst` para retener `asmapro`, reutiliza objetos nativos, hace validaciones a archivos sin SIGPIPE, instala de manera aislada, conserva SHA del AS2K instalado, y restaura fuentes del donante. No ejecuta pruebas con emulador genérico.
+- Iniciado en Vontar por Commander con PID `441562`. Evidencia de compilación hasta `Compiling src/lib/formats/all.cpp`, tras generar los 33 proyectos y archivar `liboptional.a`. **PASO FINAL AÚN NO VERIFICADO**, no afirmar instalación hasta estado `EXIT=0`.
+- Archivos de resultado: `~/.local/share/alphasmart/private/aspro/logs/vontar-as2k-method-reuse.status` y `.log`. Ejecutable previsto `/usr/local/libexec/aspro/aspro-bin`; lanzador `/usr/local/bin/aspro`; menú `/usr/local/share/applications/aspro.desktop`. El AS2K previo permanece en `/usr/local/libexec/as2k/as2k-bin`.
