@@ -40,6 +40,7 @@ def validate_tree(tree: Path):
     return info
 
 def prepare(source: Path, destination: Path):
+    raise ValueError('BLOCKED_RETIRED: no duplicate MAME export; continue incrementally in build/send-mame')
     source = source.resolve(strict=True)
     destination = destination.resolve()
     owned = (ROOT/'build').resolve()

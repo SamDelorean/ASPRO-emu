@@ -14,6 +14,7 @@ def sha256(path):
     return h.hexdigest()
 
 def adopt(source):
+    raise ValueError('BLOCKED_RETIRED: never copy DIAG executables; use canonical build/send-mame/asprodiag')
     if source.is_symlink() or not source.is_file() or not os.access(source,os.X_OK):
         raise ValueError('reference DIAG executable missing/aliased')
     result=subprocess.run([str(source),'-listxml','asmapro','-noreadconfig'],

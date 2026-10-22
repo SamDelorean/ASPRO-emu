@@ -19,7 +19,7 @@ set +e
 python3 tools/ap04_campaign.py \
   --rom "$INPUT/alphasmartpro212.rom" \
   --lcd-rom "$INPUT/ks0066_f05.bin" \
-  --bin "$ROOT/build/prebuilt/asprodiag" >"$RESULT"
+  --bin "$ROOT/build/send-mame/asprodiag" >"$RESULT"
 rc=$?
 set -e
 if [[ ! -s "$RESULT" ]]; then

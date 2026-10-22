@@ -127,7 +127,7 @@ if __name__=="__main__":
     p.add_argument("--rom",type=Path,required=True)
     p.add_argument("--lcd-rom",type=Path,required=True)
     p.add_argument("--bin",dest="binary",type=Path,
-                   default=ROOT/"build/prebuilt/asprodiag")
+                   default=ROOT/"build/send-mame/asprodiag")
     a=p.parse_args()
     os.umask(0o077)
     try:

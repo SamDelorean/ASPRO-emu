@@ -15,7 +15,6 @@ import sys
 import tempfile
 import zipfile
 from rom_audit import audit_rom
-from prepare_mame import validate_tree, COMMIT
 
 ROOT = Path(__file__).resolve().parents[1]
 KS0066_F05_SHA1 = '0196e871584ee5d370856e7307c0f9d1466e3e51'
@@ -42,17 +41,14 @@ def validate_inputs(rom, lcd_rom, binary):
         native=f.read(4)==b'\x7fELF'
     if not native or info.get('binary_sha256')!=sha(binary):
         raise ValueError('binary hash/ELF mismatch')
-    if info.get('mode')=='adopted_prebuilt_as2kdiag':
-        if (binary.parent!=(ROOT/'build/prebuilt').resolve()
-            or info.get('machine')!='asmapro'
-            or info.get('rom_sha1')!='c3c6a421c9ced92db97431d04b4a3f09a39de716'
-            or info.get('probe')!='listxml_asmapro'
-            or info.get('donor_sha256')!=info.get('binary_sha256')):
-            raise ValueError('unverified adopted DIAG binary')
-    else:
-        validate_tree(binary.parent)
-        if info.get('source_commit')!=COMMIT or info.get('subtarget')!='asprodiag':
-            raise ValueError('binary build provenance mismatch; run tools/build_diag.sh')
+    # Single cumulative AP02–AP07 instrumented instance. Historical adoption
+    # and second MAME trees are retired, not alternate execution choices.
+    canonical=(ROOT/'build/send-mame').resolve()
+    if binary.parent != canonical:
+        raise ValueError('BLOCKED_NONCANONICAL_DIAG_BINARY: use build/send-mame/asprodiag')
+    if (info.get('variant')!='ASPRO-DIAG' or info.get('system')!='asmapro'
+            or info.get('destination')!=str(canonical)):
+        raise ValueError('BLOCKED_DIAG_PROVENANCE_MISMATCH')
     return audit,binary
 
 def debugger_script():

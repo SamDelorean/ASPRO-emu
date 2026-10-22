@@ -3,6 +3,9 @@
 set -euo pipefail
 umask 077
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
+# HISTORICAL AP02/AP04 PATH: preserve source for knowledge only.
+printf '%s\n' 'BLOCKED_AP02_RETIRED: único ASPRO-DIAG build/send-mame; reutilizar su ejecutable y resultados, no adoptar/duplicar MAME' >&2
+exit 2
 SOURCE= REMOTE= JOBS=2 CAPTURE=auto
 usage() {
     echo 'Usage: ap02_run_once.sh --mame-source EXISTING_GIT_REFERENCE --drive-remote NAME: [--jobs N] [--capture auto|none|soft]' >&2

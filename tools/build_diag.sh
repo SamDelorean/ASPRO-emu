@@ -2,6 +2,9 @@
 # Only this ASPRO checkout's owned build tree may receive make outputs.
 set -euo pipefail
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
+# Historical AP02 entrypoint retained for provenance only: no second build tree.
+echo "BLOCKED_LEGACY_DIAG_BUILD: use tools/build_send_diag.sh and existing build/send-mame; do not create build/mame" >&2
+exit 2
 MAME_ROOT=${1:-${ASPRO_MAME_ROOT:-"$ROOT/build/mame"}}
 JOBS=${2:-2}
 [[ "$JOBS" =~ ^[1-9][0-9]*$ ]] || { echo 'BLOCKED: JOBS must be positive' >&2; exit 2; }
