@@ -139,3 +139,24 @@ binarios compilados de cada equipo**.
 Para detalles, ver `docs/HANDOFF.md`,
 `docs/SURF_NATIVE_MUSL_RECOVERY_20261021.md` y
 `stable/RELEASE_MANIFEST.md`.
+
+## Corrección pendiente de integrar (22-oct-2026)
+
+`main` contiene el mapa Pro corregido en
+`stable/alphasma.cpp`, sin el error de coma duplicada que impedía
+compilar la primera corrección. El framebuffer GTK en
+`stable/aspro_ui.py` ahora convierte píxeles mediante bytes y omite
+fotogramas repetidos; el botón `Find` se retiró al no tener contacto
+Pro identificado.
+
+Verificaciones preparadas:
+`python3 tools/test_pro_ui_matrix.py` y
+`python3 tools/test_stable_lcd_frontend.py`. La validación local del
+fragmento RGB y la prueba aislada de sintaxis del mapa C++ pasaron.
+**Aún no se ejecutaron esos dos scripts completos en la máquina y
+no se recompiló el núcleo MAME**, por lo que las pruebas interactivas
+del nuevo código están pendientes.
+
+**Importante:** los binarios ya instalados en VONTAR y Surf son anteriores
+a esta corrección; DIAG permanece inalterado. No usar estos cambios para
+declarar que la lentitud del arranque o el editor GTK han quedado resueltos.
