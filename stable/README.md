@@ -27,6 +27,15 @@ las interacciones de teclado, PC y bootstrap **no tienen todavía un PASS
 manual posinstalación en ambas máquinas**. No presentar los menús integrados
 como prueba funcional independiente.
 
+**Cambio en `main`, 22-oct-2026 (aún NO instalado):** se corrigió
+exclusivamente el mapa de teclas virtuales GTK→matriz física Pro en
+`stable/alphasma.cpp`. La comparación estática coincide en 78 de 78
+contactos documentados; FIND no tiene posición Pro comprobada.
+`tools/test_pro_ui_matrix.py` agrega una regresión aislada de firmware.
+Los binarios/hashes de v0.1.0 arriba siguen representando la instalación
+**anterior** y todavía necesitan compilación y prueba del nuevo teclado.
+Ver `stable/RELEASE_MANIFEST.md`.
+
 ## Archivos de producto
 
 | Archivo | Uso |
