@@ -16,7 +16,8 @@ STATUS="$PRIVATE/logs/surf-native-build-install.status"
 TARGET=/usr/local/libexec/aspro/aspro-bin
 # Verified public source bundle (same driver, HC11 and GTK as installed in Surf
 # and Vontar, plus the corrected root-directory permissions in installer).
-REF=eaeb8b03fc32009477313f91767e60211c54aecd
+# Pinned stable driver/GTK release after native Pro keyboard/LCD repair.
+REF=c3b1b2bd42788265b44b1a0bbdcc086e22ee3b1c
 mkdir -p "$APP" "$CPU" "$PRIVATE/logs" "$PRIVATE/binaries/stable-armv7" "$PREFIX/backup"
 exec >"$LOG" 2>&1
 STEP=PREFLIGHT
