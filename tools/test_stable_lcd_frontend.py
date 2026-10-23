@@ -46,7 +46,9 @@ def main():
     assert "stat.st_mtime_ns==self.frame_stamp" in body
     assert "stat.st_size!=W*H" in body
     assert "rgb=frame_to_rgb(raw)" in body
-    assert "self.pix=GdkPixbuf.Pixbuf.new_from_bytes(" in body
+    assert "next_pix=GdkPixbuf.Pixbuf.new_from_bytes(" in body
+    assert "self.pix=next_pix" in body
+    assert "self.frame_stamp=stat.st_mtime_ns" in body
     assert "W,H,W*3)" in body
     assert "self.lcd.queue_draw()" in body
     assert "for y in range(" not in body and "for x in range(" not in body
