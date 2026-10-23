@@ -143,13 +143,15 @@ class ProWindow(Gtk.ApplicationWindow):
             raw=FRAME.read_bytes()
             if len(raw)!=W*H:
                 return True
-            self.frame_stamp=stat.st_mtime_ns
             if raw==self.frame_cache:
+                self.frame_stamp=stat.st_mtime_ns
                 return True
             rgb=frame_to_rgb(raw)
-            self.pix=GdkPixbuf.Pixbuf.new_from_bytes(
+            next_pix=GdkPixbuf.Pixbuf.new_from_bytes(
                 GLib.Bytes.new(rgb),GdkPixbuf.Colorspace.RGB,False,8,W,H,W*3)
+            self.pix=next_pix
             self.frame_cache=raw
+            self.frame_stamp=stat.st_mtime_ns
             self.lcd.queue_draw()
         except (OSError,ValueError):
             # Ignore a frame being rewritten; the next GTK tick retries.
