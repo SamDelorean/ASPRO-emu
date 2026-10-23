@@ -254,14 +254,42 @@ No accede a documentos/NVRAM personales ni redistribuye las ROM privadas.
 - **No se reinició la ventana GTK**: requiere iniciar una nueva instancia
   para aceptar visualmente las seis teclas y medir el arranque de GUI.
 
-### Surf ARMv7/musl — compilación nativa iniciada
+### Surf ARMv7/musl — PASS e instalado
 
-En Surf pasó la misma validación estática y el procedimiento nativo existente
-`deploy_surf_native_autonomous.sh` se lanzó, reutilizando `-j1`
-y la adaptación musl v2. Se insertó la misma prueba del puente antes
-de la instalación; **no marcar PASS ni binario sustituido hasta confirmar**
-la prueba y el fin real del proceso. Log privado
-`~/.local/share/alphasmart/private/aspro/logs/surf-native-build-install.log`.
+- Paridad de fuentes y tests estáticos ejecutados: matriz virtual Pro
+  **78/78 PASS** y referencia física de DIAG PASS, conversión RGB 240×36
+  PASS, caché/teclas GTK PASS y sintaxis Python PASS.
+- Compilación nativa con `make -j1`, adaptación reversible BX/musl v2,
+  MAME reducido a un solo `asmapro`. Ninguna recompilación de DIAG ni de
+  AS2K; no se usó la compilación cruzada desde T640.
+- Smoke propio de firmware: `PRIVATE_ROM_ZIP_READY`, `-validate`
+  y arranque real con salida normal. MAME emitió el aviso histórico
+  `ks0066_f05.bin ROM NEEDS REDUMP`, pero el núcleo ejecutó las
+  pruebas siguientes y no es un fallo de teclado.
+- Prueba de puente **antes de instalación**:
+  `ASPRO_STABLE_BRIDGE_CONTROL_PASS wall_s=6.744`,
+  `ASPRO_STABLE_BRIDGE_ABC123_INJECTED_PASS wall_s=6.746`,
+  `ASPRO_STABLE_BRIDGE_LCD_CHANGED_PASS diff_rgba_bytes=264`,
+  `ASPRO_STABLE_BRIDGE_SMOKE_PASS`.
+- Constructor terminó con `ASPRO_SURF_NATIVE_COMPILE_INSTALL_PASS`,
+  `ASPRO_SURF_AP10_COMPLETE`, **exit=0**.
+  SHA256 instalado y del candidato idénticos:
+  `28e13681c57ed1f9e09735f101077aca302b836d82193fc0721dc0ac5c2cfc9b`.
+  Blob GUI instalado `64c411a616224d53754e92eef077eaa9a94bf9aa`;
+  sesión `873f6263708b58025526bb9d056773b7b3272d40`.
+- La copia con `cp -p` de ejecutables root-owned emitió advertencias
+  al intentar conservar propietario sin permisos, **pero sí copió los
+  contenidos**. Auditoría posterior: respaldo de binario previo
+  SHA256 `aa4c96cc8b3c0b5ea61f96622ae354627a69482dc752b1296e6385de7c376223`
+  coincide exactamente con v0.1.0; el núcleo AS2K instalado coincide
+  byte por byte con su respaldo; árbol MAME donante sin cambios.
+- Se corrigió en el constructor canónico futuro el uso de `cp -p`:
+  ahora se utiliza copia ordinaria, `cmp` y sello de respaldo único.
+  No fue necesario repetir la compilación tras las advertencias.
+- Log privado:
+  `~/.local/share/alphasmart/private/aspro/logs/surf-native-build-install.log`.
+- **GTK vivo sin aceptación visual aún**: las nuevas ventanas requieren
+  abrir una instancia nueva y verificar `ABC123` y latencia a mano.
 
 El resultado de rendimiento de `-nothrottle` es solo para MAME sin GTK;
 **no** demuestra la velocidad de la nueva ventana, que permanece pendiente
