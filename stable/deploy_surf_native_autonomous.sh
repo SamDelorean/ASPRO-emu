@@ -202,6 +202,8 @@ PY
 SDL_VIDEODRIVER=dummy timeout 50 "$MAME/aspro" asmapro \
  -rompath "$PREFIX/test/roms" -sound none -video none -nothrottle \
  -seconds_to_run 2 -skip_gameinfo -snapshot_directory "$PREFIX/test/snap"
+STEP=TEST_ASPRO_BRIDGE_ABC123_BEFORE_INSTALL
+python3 -B "$PREFIX/tools/smoke_stable_bridge.py" --binary "$MAME/aspro" --private "$PRIVATE" --timeout 240
 STEP=INSTALL_PRO_STABLE_SEPARATELY
 if test -e "$TARGET"; then
  cp -p "$TARGET" "$PRIVATE/binaries/stable-armv7/aspro-bin.before-$STAMP"
