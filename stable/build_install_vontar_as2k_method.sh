@@ -134,6 +134,15 @@ if grep -Eq '^asma2k[[:space:]]' "$LOGDIR/vontar-aspro-driver-list.txt"; then
 fi
 sha256sum "$ROOT/aspro" >"$LOGDIR/vontar-aspro-candidate.sha256"
 # AS2K Stable validates the reduced executable BEFORE installation.
+# Regression from ASPRO-DIAG: an actual UI-bridge ABC123 sequence must
+# change the LCD before replacing the installed ASPRO binary.
+STEP=TEST_ASPRO_BRIDGE_ABC123_BEFORE_INSTALL
+SMOKE="$STAGE/tools/smoke_stable_bridge.py"
+mkdir -p "$(dirname "$SMOKE")"
+curl -fLsS --retry 2 --connect-timeout 15 --max-time 90 \
+  "https://raw.githubusercontent.com/SamDelorean/ASPRO-emu/c3b1b2bd42788265b44b1a0bbdcc086e22ee3b1c/tools/smoke_stable_bridge.py" \
+  -o "$SMOKE"
+python3 -B "$SMOKE" --binary "$ROOT/aspro" --private "$PRIVATE" --timeout 150
 STEP=INSTALL_SEPARATELY_AS_ASPRO
 # Pin installer to the corrected canonical version with traversable root
 # directories.  Do not touch AS2K core/frontend or its desktop launcher.
