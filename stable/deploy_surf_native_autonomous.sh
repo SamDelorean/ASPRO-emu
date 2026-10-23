@@ -84,6 +84,9 @@ for name in mc68hc11.cpp mc68hc11.h; do
  test -s "$CPU/$name" || { echo "BLOCKED_PROVEN_D0_SOURCE_MISSING $name"; exit 4; }
 done
 python3 -m py_compile "$APP/aspro_ui.py" "$APP/aspro_session.py"
+mkdir -p "$PREFIX/tools"
+wget -q -T 30 -t 3 "https://raw.githubusercontent.com/SamDelorean/ASPRO-emu/$REF/tools/smoke_stable_bridge.py" -O "$PREFIX/tools/smoke_stable_bridge.py"
+test -s "$PREFIX/tools/smoke_stable_bridge.py" || { echo "BLOCKED_STABLE_BRIDGE_SMOKE_SOURCE"; exit 4; }
 grep -q diag_bootstrap_tx_bit "$CPU/mc68hc11.cpp"
 grep -q diagnostic_bootstrap_wait_for_serial "$CPU/mc68hc11.h"
 sha256sum "$CPU/"* "$APP/"*.py "$APP/alphasma.cpp" >"$PREFIX/source-sha256.txt"
