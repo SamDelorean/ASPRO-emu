@@ -63,3 +63,37 @@ Esta rama no contiene ROMs, firmware, NVRAM ni payload binario.
 El código fuente del procesador y el driver constituye adaptación
 del proyecto MAME; conservar cabeceras y licencias originales.
 No crear ni subir paquetes con contenido privado.
+
+## AP08 — ASPRO Stable native Pro keyboard mapping (22 Oct 2026)
+
+**Incremento de fuente (rama `main`), NO instalado, NO compilado.**
+El manifiesto `v0.1.0` y los hashes SHA256 de los ejecutables previos
+conservan su validez histórica; no corresponden aún al nuevo mapeo.
+
+- Se modificó **solo** `aspro_send_state::ui_key_location()` del
+  `stable/alphasma.cpp`. Las coordenadas columna/bit originales procedían
+  de AS2K y no del AlphaSmart Pro; el lector de teclado Pro sí usa la matriz
+  `INPUT_PORTS_START(alphasmart)` definida en este mismo archivo.
+- Auditoría de 79 entradas anteriores: 75 coordenadas erróneas corregidas,
+  3 coincidían (0, QUOTE, DOWN), y la entrada virtual FIND no tiene
+  contacto Pro físico documentado y quedó sin asignación deliberadamente.
+- Resultado estático: **78/78 coordenadas coincidentes** con el mapa Pro;
+  26 letras, 10 dígitos y F1–F8 incluidos; sin contactos duplicados.
+  Ejemplos: A=col14/0x10, Z=col14/0x80, F1=col13/0x01,
+  SEND=col7/0x01.
+- Comparación completa de la fuente previa `release/stable-v0.1.0-vontar-surf`
+  con el nuevo `main`: **únicamente cambió esta función**.
+  Permanecieron intactos HC11D0, señal IRQ, bancos RAM, LCD, bootstrap SCI,
+  puertos PC y NVRAM; ningún archivo privado fue abierto.
+- Fuente corregida Git blob `a0ebec7eced44e82f113615cff05acc6b7d28b40`.
+  Prueba independiente `tools/test_pro_ui_matrix.py`: reproduce la
+  comparación de todos los contactos contra el bloque de puertos Pro,
+  ejecutable con `python3 tools/test_pro_ui_matrix.py`; no precisa MAME ni
+  Commander. La comprobación equivalente de paridad se completó en análisis
+  estático, pero **no se afirma ejecución de ese script en un host**.
+- **Estado**: STATIC_MAP_MATCH_PASS / SOURCE_UPDATED / COMPILE_PENDING /
+  INSTALLED_PENDING / RUNTIME_KEYBOARD_PENDING.
+- Próximo incremento limitado: compilación nativa incremental de VONTAR
+  reutilizando el constructor estable y prueba del editor con A/ABC123,
+  sin alterar el binario AS2K ni reconstruir MAME completo. Surf se
+  actualizará después de la prueba de la nueva implementación.
