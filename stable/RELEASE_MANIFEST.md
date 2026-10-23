@@ -97,3 +97,41 @@ conservan su validez histórica; no corresponden aún al nuevo mapeo.
   reutilizando el constructor estable y prueba del editor con A/ABC123,
   sin alterar el binario AS2K ni reconstruir MAME completo. Surf se
   actualizará después de la prueba de la nueva implementación.
+
+## ASPRO-DIAG-first — referencia de teclado conservada (22-oct-2026)
+
+Decisión del usuario: **comenzar en DIAG, no compilar Stable todavía**.
+Se cotejaron únicamente las fuentes públicas y las evidencias previas.
+No se ejecutó Commander, no se descargaron ROM privadas y no se modificó,
+recompiló ni sustituyó `asprodiag`.
+
+- `src/mame/skeleton/alphasma.cpp` DIAG, Git blob
+  `14796d807aa731035d572bc5c3ef1e00bf970887`, lee directamente
+  `m_keyboard[i]->read()`; **no utiliza** la máscara virtual
+  `m_ui_keyboard` ni la tabla `ui_key_location()` introducida por GTK Stable.
+- El bloque `INPUT_PORTS_START(alphasmart)` coincide **80/80 entradas
+  físicas** entre DIAG y Stable; no procede alterar la matriz Pro de DIAG.
+- `tools/ap03_startup_observe.lua` inserta `A` mediante el contacto real
+  `COL.14`, máscara `0x10`, `set_value(1)` / `clear_value()`.
+  La evidencia AP-03 histórica ya estableció letra `a` visible en LCD.
+- AP-04 validó F1–F8 y recuperación NVRAM tras reinicio real del MAME
+  diagnóstico, con las restricciones documentadas en
+  `docs/AP04_FILES_NVRAM_FUNCTIONAL_EVIDENCE.md`.
+- Se extendió la prueba **existente**
+  `tools/test_pro_ui_matrix.py` con el contrato de paridad DIAG/Stable
+  y la inyección Pro física de AP-03, evitando crear otro script de
+  diagnóstico o duplicar la instalación DIAG.
+- La comparación equivalente de código y de los 80 contactos sí fue
+  realizada como análisis estático. **El script Python actualizado no fue
+  ejecutado en el equipo** y **no hay nueva prueba dinámica** de esta ronda.
+- Diferencia causal confirmada: el mapa erróneo que explica la falta de
+  texto existe **solo en la ruta GTK Stable** y fue corregido en fuente
+  `main`. DIAG continúa como baseline inalterado.
+- Rendimiento: AP-03 observó el editor listo al primer checkpoint
+  de **8 segundos emulados**, no una medida de segundos reales. El
+  retardo del usuario en Stable requiere una comprobación dirigida de
+  tiempo real antes de atribuirlo al HC11 o a `Testing RAM...`.
+
+**Estado:** DIAG_SOURCE_MATRIX_PARITY_PASS (80/80),
+DIAG_PREVIOUS_KEYBOARD_AND_NVRAM_FUNCTIONAL_PASS (AP-03/AP-04),
+DIAG_NEW_RUNTIME_NOT_RUN, STABLE_BUILD_NOT_STARTED.
