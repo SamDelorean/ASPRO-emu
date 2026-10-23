@@ -1,5 +1,37 @@
 # ASPRO Stable v0.1.0 — Vontar ARM64 y Surface RT ARMv7
 
+## Estado vigente — AP-10, corrección instalada en ambas máquinas (22/23-oct-2026)
+
+Las instalaciones **ASPRO Stable VONTAR ARM64 y Surf ARMv7/musl** se
+actualizaron con el driver corregido de **78 teclas Pro** y el frontend
+LCD GTK optimizado, sin modificar ASPRO-DIAG ni el binario instalado AS2K.
+
+- **VONTAR:** compilación nativa, `-validate`, puente GTK→MAME `ABC123`
+  e instalación PASS. SHA256 del núcleo
+  `0f801f002175711bb5e6f733d798f2186cdc86cfbf0bda2987793a824c7773de`.
+- **Surf:** compilación nativa `-j1` con musl v2, las mismas pruebas,
+  restitución del árbol donante e instalación PASS. SHA256 del núcleo
+  `28e13681c57ed1f9e09735f101077aca302b836d82193fc0721dc0ac5c2cfc9b`.
+- **Frontend idéntico en ambas:** blob
+  `64c411a616224d53754e92eef077eaa9a94bf9aa` de `stable/aspro_ui.py`.
+  Prueba funcional de puente: diferencia de 264 bytes RGBA respecto
+  a control sin pulsaciones en ambos equipos. Esto no sustituye
+  inspección visual de caracteres en la ventana real.
+- Compilaciones basadas en fuente pública fijada
+  `c3b1b2bd42788265b44b1a0bbdcc086e22ee3b1c`.
+  La prueba [`tools/smoke_stable_bridge.py`](../tools/smoke_stable_bridge.py)
+  se incorporó al procedimiento **antes de instalar** en ambos scripts.
+- **Pendiente de aceptación:** abrir una instancia GTK nueva, verificar
+  que las teclas visibles escriben `ABC123` en el editor y medir arranque
+  real de la ventana. No se forzó el cierre de GUI ni se alteró la
+  NVRAM personal para esta entrega.
+
+El contenido que sigue documenta la publicación v0.1.0 original y
+antecedentes anteriores a AP-10. Los hashes de v0.1.0 se conservan
+como referencias históricas, no como binarios vigentes.
+
+
+
 Esta carpeta es el **producto estable reducido AlphaSmart Pro**, separado de
 `ASPRO-DIAG` y de la instalación de `AS2K`. Contiene el **mismo driver, CPU
 HC11 y menú GTK** que se compilaron e instalaron en ambos equipos el
@@ -140,7 +172,7 @@ Para detalles, ver `docs/HANDOFF.md`,
 `docs/SURF_NATIVE_MUSL_RECOVERY_20261021.md` y
 `stable/RELEASE_MANIFEST.md`.
 
-## Corrección pendiente de integrar (22-oct-2026)
+## Antecedente anterior a la integración AP-10 (22-oct-2026)
 
 `main` contiene el mapa Pro corregido en
 `stable/alphasma.cpp`, sin el error de coma duplicada que impedía
