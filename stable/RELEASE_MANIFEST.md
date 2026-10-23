@@ -135,3 +135,30 @@ recompiló ni sustituyó `asprodiag`.
 **Estado:** DIAG_SOURCE_MATRIX_PARITY_PASS (80/80),
 DIAG_PREVIOUS_KEYBOARD_AND_NVRAM_FUNCTIONAL_PASS (AP-03/AP-04),
 DIAG_NEW_RUNTIME_NOT_RUN, STABLE_BUILD_NOT_STARTED.
+
+## AP-08 — tiempo real de arranque en ASPRO-DIAG (22-oct-2026)
+
+**Corrida nueva, real, en T640 y sin recompilar**. Se usó el binario
+diagnóstico existente, verificado con su manifiesto SHA256, el firmware Pro
+y la CGROM privada (identidades verificadas y staging eliminado después).
+
+- Primer ciclo, NVRAM temporal nueva: 12 s emulados completados en
+  **0.555 s reales**; frame 400 (~8 s emulados) en ~0.403 s;
+  pulsación A DOWN/UP y diferencia LCD de 24 píxeles en x0–10,y2–7.
+- Segundo ciclo, NVRAM recuperada: 12 s emulados en **0.504 s reales**;
+  frame 400 en ~0.403 s; pulsación A DOWN/UP y diferencia LCD de 24
+  píxeles en x6–16,y2–7.
+- Ambos `exit=0`, `OBSERVATION_COMPLETE`, imagen NVRAM de 131072 B
+  y `ASPRO_AP08_BOUNDED_DIAG_TIMING_PASS`. Se ejecutó con
+  `-nothrottle`, sin GTK y con `-video none`, de modo que **no** se
+  extrapola esta velocidad a VONTAR/Surf ni a la ventana pública.
+- Prueba e informe:
+  [AP-08 DIAG cold/warm](../docs/AP08_DIAG_COLD_WARM_TIMING_20261022.md).
+  Resultado privado en
+  `~/Projects/alphasmart/ASPRO-emu/private/ap08_timing/diag_timing_lz6rk5lr/report.json`.
+- **Commander:** dos llamadas T640, sin modificar DIAG, ASPRO Stable,
+  AS2K, Surf ni VONTAR. La prueba visual original del carácter A continúa
+  sustentada por AP-03, no por un clasificador OCR de AP-08.
+
+**Interpretación:** el núcleo de DIAG responde rápidamente; la lentitud
+notificada en Stable aún requiere validación de su propia ruta GTK/ARM.
