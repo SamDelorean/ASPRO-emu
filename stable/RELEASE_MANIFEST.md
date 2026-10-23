@@ -162,3 +162,47 @@ y la CGROM privada (identidades verificadas y staging eliminado después).
 
 **Interpretación:** el núcleo de DIAG responde rápidamente; la lentitud
 notificada en Stable aún requiere validación de su propia ruta GTK/ARM.
+
+## AP-09 — corrección sintáctica del mapa Pro y optimización GTK LCD (22-oct-2026)
+
+**Alcance:** fuente ASPRO Stable en `main`. Se conserva ASPRO-DIAG como
+referencia funcional intacta. **No hubo compilación MAME, instalación,
+cambio de ROM ni Commander** en este incremento.
+
+1. Se identificó un error de sintaxis oculto por la comparación de
+   coordenadas previa: la eliminación de la entrada FIND dejó
+   `{ "SEND",7,0x01 }, , { "UP",7,0x08 }`.
+   Se retiró la coma sobrante en `stable/alphasma.cpp`. El mapeo Pro
+   conserva **78 entradas** válidas y el contacto físico de FIND sigue
+   sin atribuirse.
+2. `tools/test_pro_ui_matrix.py` ahora rechaza expresamente la secuencia
+   de comas duplicadas y comprueba paridad entre matriz física Pro,
+   puente GTK y referencia DIAG. **La nueva revisión del test no fue
+   ejecutada en un equipo remoto**.
+3. `stable/aspro_ui.py` deja de expandir el LCD de 240×36 píxeles
+   mediante bucles Python; agrega `frame_to_rgb(raw)` con expansión de
+   bytes en código nativo de Python, valida 8640 bytes 0/1, crea un
+   `GdkPixbuf` RGB24 de stride 720, conserva el último fotograma y
+   elude repintar contenido idéntico. La marca temporal se compromete
+   después de una conversión correcta. Se retiró el botón virtual
+   `Find` no implementado.
+4. Se agregó `tools/test_stable_lcd_frontend.py`: prueba sin GTK ni ROM
+   de fotogramas 0, 1, alternados, longitud y valores inválidos; prueba
+   estática de política de caché y comandos de teclado.
+5. **Pruebas locales, aisladas (no MAME ni GUI):**
+   `ISOLATED_EXACT_FRAME_TO_RGB_FRAGMENT_PASS` y
+   `ASPRO_PRO_KEYMAP_ISOLATED_CPP_SYNTAX_PASS` usando el fragmento de
+   tabla extraído y compilador C++17 local. No equivalen a compilar todo
+   `alphasma.cpp` con el árbol MAME.
+6. **Medición sintética local**, 100 cuadros en el método anterior y
+   10000 en el nuevo: ~2.170 ms vs ~0.122 ms por fotograma
+   (**17.7×** en expansión RGB solamente). CPU local y condiciones
+   sintéticas; no demuestra aceleración proporcional de ASPRO ARM.
+7. La referencia [AP-08 DIAG](../docs/AP08_DIAG_COLD_WARM_TIMING_20261022.md)
+   sigue siendo la evidencia de arranque sin GTK en la T640
+   (12 s emulados en 0.555/0.504 s reales, `-nothrottle`).
+
+**Estado:** SOURCE_PREPARED / ISOLATED_RENDER_CONVERSION_PASS /
+ISOLATED_CPP_TABLE_SYNTAX_PASS / FULL_MAME_COMPILE_PENDING /
+STABLE_ARM_GUI_RUNTIME_PENDING. Las instalaciones v0.1.0 de VONTAR
+y Surf siguen ejecutando binarios anteriores; no atribuirles el arreglo.
