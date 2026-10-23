@@ -240,32 +240,34 @@ TIMER_CALLBACK_MEMBER(aspro_send_state::ui_key_release)
 bool aspro_send_state::ui_key_location(std::string_view name,uint8_t &col,uint8_t &mask) const
 {
     struct key_map { std::string_view name; uint8_t col, mask; };
+    // Pro keyboard matrix: derived exclusively from INPUT_PORTS_START(alphasmart).
+    // FIND has no corresponding physical Pro key; do not synthesize a position.
     static constexpr key_map keys[] =
 	{
-		{ "RBRACKET",0,0x01 }, { "F6",0,0x02 }, { "K",0,0x04 }, { "I",0,0x08 },
-		{ "EQUALS",0,0x10 }, { "8",0,0x20 }, { "COMMA",0,0x40 },
-		{ "LALT",1,0x10 }, { "RALT",1,0x40 },
-		{ "F7",2,0x01 }, { "L",2,0x04 }, { "O",2,0x08 }, { "F8",2,0x10 },
-		{ "9",2,0x20 }, { "PERIOD",2,0x40 },
-		{ "LBRACKET",3,0x01 }, { "QUOTE",3,0x02 }, { "SEMICOLON",3,0x04 },
-		{ "P",3,0x08 }, { "MINUS",3,0x10 }, { "0",3,0x20 }, { "SLASH",3,0x80 },
-		{ "COMMAND",4,0x02 }, { "HOME",4,0x08 }, { "CLEAR",4,0x20 }, { "ESC",4,0x80 },
-		{ "DOWN",5,0x02 }, { "END",5,0x40 }, { "LEFT",5,0x80 },
-		{ "ENTER",6,0x10 }, { "RIGHT",6,0x80 },
-		{ "SEND",7,0x10 }, { "FIND",7,0x40 }, { "UP",7,0x80 },
-		{ "BACKSPACE",9,0x01 }, { "F5",9,0x02 }, { "BACKSLASH",9,0x04 },
-		{ "PRINT",9,0x10 }, { "SPELL",9,0x20 }, { "RETURN",9,0x40 }, { "SPACE",9,0x80 },
-		{ "F3",10,0x01 }, { "F4",10,0x02 }, { "D",10,0x04 }, { "E",10,0x08 },
-		{ "F2",10,0x10 }, { "3",10,0x20 }, { "C",10,0x40 },
-		{ "CAPSLOCK",11,0x01 }, { "S",11,0x04 }, { "W",11,0x08 }, { "F1",11,0x10 },
-		{ "2",11,0x20 }, { "X",11,0x40 },
-		{ "TAB",12,0x01 }, { "A",12,0x04 }, { "Q",12,0x08 }, { "GRAVE",12,0x10 },
-		{ "1",12,0x20 }, { "Z",12,0x40 }, { "LCTRL",12,0x80 },
-		{ "T",13,0x01 }, { "G",13,0x02 }, { "F",13,0x04 }, { "R",13,0x08 },
-		{ "5",13,0x10 }, { "4",13,0x20 }, { "V",13,0x40 }, { "B",13,0x80 },
-		{ "LSHIFT",14,0x01 }, { "RSHIFT",14,0x40 },
-		{ "Y",15,0x01 }, { "H",15,0x02 }, { "J",15,0x04 }, { "U",15,0x08 },
-		{ "6",15,0x10 }, { "7",15,0x20 }, { "M",15,0x40 }, { "N",15,0x80 },
+		{ "RBRACKET",10,0x04 }, { "F6",10,0x02 }, { "K",10,0x10 }, { "I",10,0x40 },
+		{ "EQUALS",10,0x01 }, { "8",10,0x20 }, { "COMMA",10,0x80 },
+		{ "LALT",9,0x01 }, { "RALT",9,0x80 },
+		{ "F7",0,0x04 }, { "L",0,0x10 }, { "O",0,0x40 }, { "F8",0,0x01 },
+		{ "9",0,0x20 }, { "PERIOD",0,0x80 },
+		{ "LBRACKET",3,0x04 }, { "QUOTE",3,0x02 }, { "SEMICOLON",3,0x10 },
+		{ "P",3,0x40 }, { "MINUS",3,0x01 }, { "0",3,0x20 }, { "SLASH",3,0x08 },
+		{ "COMMAND",6,0x02 }, { "HOME",6,0x40 }, { "CLEAR",6,0x20 }, { "ESC",14,0x02 },
+		{ "DOWN",5,0x02 }, { "END",5,0x80 }, { "LEFT",5,0x08 },
+		{ "ENTER",4,0x01 }, { "RIGHT",4,0x08 },
+		{ "SEND",7,0x01 }, , { "UP",7,0x08 },
+		{ "BACKSPACE",11,0x04 }, { "F5",11,0x02 }, { "BACKSLASH",11,0x10 },
+		{ "PRINT",11,0x01 }, { "SPELL",11,0x20 }, { "RETURN",11,0x80 }, { "SPACE",11,0x08 },
+		{ "F3",12,0x04 }, { "F4",12,0x02 }, { "D",12,0x10 }, { "E",12,0x40 },
+		{ "F2",12,0x01 }, { "3",12,0x20 }, { "C",12,0x80 },
+		{ "CAPSLOCK",13,0x04 }, { "S",13,0x10 }, { "W",13,0x40 }, { "F1",13,0x01 },
+		{ "2",13,0x20 }, { "X",13,0x80 },
+		{ "TAB",14,0x04 }, { "A",14,0x10 }, { "Q",14,0x40 }, { "GRAVE",14,0x01 },
+		{ "1",14,0x20 }, { "Z",14,0x80 }, { "LCTRL",8,0x10 },
+		{ "T",1,0x04 }, { "G",1,0x02 }, { "F",1,0x10 }, { "R",1,0x40 },
+		{ "5",1,0x01 }, { "4",1,0x20 }, { "V",1,0x80 }, { "B",1,0x08 },
+		{ "LSHIFT",15,0x04 }, { "RSHIFT",15,0x80 },
+		{ "Y",2,0x04 }, { "H",2,0x02 }, { "J",2,0x10 }, { "U",2,0x40 },
+		{ "6",2,0x01 }, { "7",2,0x20 }, { "M",2,0x80 }, { "N",2,0x08 },
 	};
     for(auto const &entry: keys)
         if(entry.name==name) { col=entry.col; mask=entry.mask; return true; }
