@@ -60,6 +60,11 @@ def main():
     src = SOURCE.read_text(encoding="utf-8")
     physical = parse_ports(src)
     virtual = parse_bridge(src)
+    section = src.split("bool aspro_send_state::ui_key_location(", 1)[1].split(
+        "void aspro_send_state::ui_key(", 1)[0]
+    # Parsing key entries alone missed a stray comma that breaks C++ compilation.
+    assert not re.search(r"\}\s*,\s*,", section), "Malformed C++ key initializer"
+    assert section.count("{ \"") == 78, "Unexpected key entry count"
     assert len(virtual) == 78, len(virtual)
     assert "FIND" not in virtual, "Pro has no documented physical FIND matrix position"
     for name, expected in virtual.items():
