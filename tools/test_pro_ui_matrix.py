@@ -8,7 +8,10 @@ from pathlib import Path
 import re
 import string
 
-SOURCE = Path(__file__).resolve().parents[1] / "stable" / "alphasma.cpp"
+ROOT = Path(__file__).resolve().parents[1]
+SOURCE = ROOT / "stable" / "alphasma.cpp"
+DIAG_SOURCE = ROOT / "src" / "mame" / "skeleton" / "alphasma.cpp"
+DIAG_OBSERVER = ROOT / "tools" / "ap03_startup_observe.lua"
 ALIASES = {
     "RBRACKET": "CLOSEBRACE", "LBRACKET": "OPENBRACE",
     "PERIOD": "STOP", "SEMICOLON": "COLON",
@@ -80,6 +83,24 @@ def main():
     assert "m_ui_keyboard[col] &= ~mask" in src
     assert "m_ui_keyboard[col] |= mask" in src
     print("ASPRO_STABLE_PRO_UI_MATRIX_78_78_STATIC_PASS")
+
+    # DIAG is the already-proven reference: it uses native MAME input ports,
+    # not the GUI virtual-key overlay. Do not modify or rebuild its core.
+    diag_src = DIAG_SOURCE.read_text(encoding="utf-8")
+    diag_physical = parse_ports(diag_src)
+    assert diag_physical == physical, "DIAG and Stable disagree on Pro ports"
+    assert "data &= m_keyboard[i]->read();" in diag_src
+    assert "m_keyboard[i]->read() & m_ui_keyboard[i]" not in diag_src
+    assert "bool aspro_send_state::ui_key_location(" not in diag_src
+
+    observer = DIAG_OBSERVER.read_text(encoding="utf-8")
+    col, mask = diag_physical["A"]
+    assert f'machine.ioport.ports[":COL.{col}"]' in observer
+    assert f"field.mask == 0x{mask:02x}" in observer
+    assert "key:set_value(1)" in observer
+    assert "key:clear_value()" in observer
+    assert "screen:pixels()" in observer
+    print("ASPRO_DIAG_PRO_NATIVE_KEYBOARD_REFERENCE_STATIC_PASS")
 
 
 if __name__ == "__main__":
