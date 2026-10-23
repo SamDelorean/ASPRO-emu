@@ -20,6 +20,17 @@ W,H=240,36
 FG=(92,83,88)
 BG=(138,146,148)
 
+
+def frame_to_rgb(raw):
+    """Expand MAME's 240x36 monochrome framebuffer using C-backed bytes ops."""
+    if len(raw)!=W*H:
+        raise ValueError("Invalid ASPRO LCD framebuffer length")
+    rgb=raw.replace(b"\x00",bytes(BG)).replace(b"\x01",bytes(FG))
+    if len(rgb)!=W*H*3:
+        raise ValueError("Invalid ASPRO LCD pixel values")
+    return rgb
+
+
 class ProWindow(Gtk.ApplicationWindow):
     def __init__(self,app):
         super().__init__(application=app,title="ASPRO Emulator")
@@ -30,6 +41,7 @@ class ProWindow(Gtk.ApplicationWindow):
         self.connect("delete-event",lambda *_:False)
         self.events_at=0
         self.frame_stamp=-1
+        self.frame_cache=None
         self.pc=False
         self.pix=GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB,False,8,W,H)
         self.pix.fill((BG[0]<<24)|(BG[1]<<16)|(BG[2]<<8)|255)
@@ -88,7 +100,7 @@ class ProWindow(Gtk.ApplicationWindow):
         root.pack_start(bezel,True,True,0)
         keybox=Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL,spacing=4)
         keybox.set_margin_start(10);keybox.set_margin_bottom(8)
-        for label,key in [("Esc","ESC"),("F1","F1"),("F2","F2"),("F3","F3"),("F4","F4"),("F5","F5"),("F6","F6"),("F7","F7"),("F8","F8"),("Find","FIND"),("Clear","CLEAR"),("Send","SEND"),("Enter","ENTER")]:
+        for label,key in [("Esc","ESC"),("F1","F1"),("F2","F2"),("F3","F3"),("F4","F4"),("F5","F5"),("F6","F6"),("F7","F7"),("F8","F8"),("Clear","CLEAR"),("Send","SEND"),("Enter","ENTER")]:
             b=Gtk.Button(label=label)
             b.connect("clicked",lambda _b,k=key:self.command("KEY "+k))
             keybox.pack_start(b,False,False,0)
@@ -126,29 +138,22 @@ class ProWindow(Gtk.ApplicationWindow):
     def poll_lcd(self):
         try:
             stat=FRAME.stat()
-            if stat.st_mtime_ns!=self.frame_stamp and stat.st_size==W*H:
-                self.frame_stamp=stat.st_mtime_ns
-                data=FRAME.read_bytes()
-                pixels=self.pix.get_pixels()
-                stride=self.pix.get_rowstride()
-                try:
-                    for y in range(H):
-                        for x in range(W):
-                            r,g,b=FG if data[y*W+x] else BG
-                            p=y*stride+x*3
-                            pixels[p]=r; pixels[p+1]=g; pixels[p+2]=b
-                except TypeError:
-                    rgba=bytearray(stride*H)
-                    for y in range(H):
-                        for x in range(W):
-                            color=FG if data[y*W+x] else BG
-                            p=y*stride+x*3
-                            rgba[p:p+3]=bytes(color)
-                    self.pix=GdkPixbuf.Pixbuf.new_from_bytes(
-                        GLib.Bytes.new(bytes(rgba)),GdkPixbuf.Colorspace.RGB,
-                        False,8,W,H,stride)
-                self.lcd.queue_draw()
-        except OSError:pass
+            if stat.st_mtime_ns==self.frame_stamp or stat.st_size!=W*H:
+                return True
+            raw=FRAME.read_bytes()
+            if len(raw)!=W*H:
+                return True
+            self.frame_stamp=stat.st_mtime_ns
+            if raw==self.frame_cache:
+                return True
+            rgb=frame_to_rgb(raw)
+            self.pix=GdkPixbuf.Pixbuf.new_from_bytes(
+                GLib.Bytes.new(rgb),GdkPixbuf.Colorspace.RGB,False,8,W,H,W*3)
+            self.frame_cache=raw
+            self.lcd.queue_draw()
+        except (OSError,ValueError):
+            # Ignore a frame being rewritten; the next GTK tick retries.
+            pass
         return True
 
     def poll_events(self):
