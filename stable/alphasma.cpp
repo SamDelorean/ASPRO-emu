@@ -254,7 +254,7 @@ bool aspro_send_state::ui_key_location(std::string_view name,uint8_t &col,uint8_
 		{ "COMMAND",6,0x02 }, { "HOME",6,0x40 }, { "CLEAR",6,0x20 }, { "ESC",14,0x02 },
 		{ "DOWN",5,0x02 }, { "END",5,0x80 }, { "LEFT",5,0x08 },
 		{ "ENTER",4,0x01 }, { "RIGHT",4,0x08 },
-		{ "SEND",7,0x01 }, , { "UP",7,0x08 },
+		{ "SEND",7,0x01 }, { "UP",7,0x08 },
 		{ "BACKSPACE",11,0x04 }, { "F5",11,0x02 }, { "BACKSLASH",11,0x10 },
 		{ "PRINT",11,0x01 }, { "SPELL",11,0x20 }, { "RETURN",11,0x80 }, { "SPACE",11,0x08 },
 		{ "F3",12,0x04 }, { "F4",12,0x02 }, { "D",12,0x10 }, { "E",12,0x40 },
