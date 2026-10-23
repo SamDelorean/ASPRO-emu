@@ -206,3 +206,63 @@ cambio de ROM ni Commander** en este incremento.
 ISOLATED_CPP_TABLE_SYNTAX_PASS / FULL_MAME_COMPILE_PENDING /
 STABLE_ARM_GUI_RUNTIME_PENDING. Las instalaciones v0.1.0 de VONTAR
 y Surf siguen ejecutando binarios anteriores; no atribuirles el arreglo.
+
+## AP-10 — VONTAR/SURF: compilación nativa con matriz Pro y LCD optimizado (22-oct-2026)
+
+**Alcance:** ASPRO Stable, no ASPRO-DIAG ni AS2K. Fuente fijada en
+`c3b1b2bd42788265b44b1a0bbdcc086e22ee3b1c`.
+Núcleo Pro: blob `75e2d5ff78f89b6bc49d429b53b72a51bd953637`;
+frontend GTK: blob `64c411a616224d53754e92eef077eaa9a94bf9aa`;
+gestor de sesión: blob `873f6263708b58025526bb9d056773b7b3272d40`.
+
+**Nueva prueba integrada previo a instalar:** `tools/smoke_stable_bridge.py`.
+Lanza el candidato real MAME `asmapro` en dos procesos con NVRAM
+sintética separada y ROM Pro/CGROM privadas verificadas. Un observador Lua
+envía `KEY A`, `KEY B`, `KEY C`, `KEY 1`, `KEY 2`, `KEY 3`
+por la **cola de comandos real del puente GTK→MAME**, y compara
+`screen:pixels()` contra un control sin pulsaciones en el mismo
+fotograma emulado. Comprueba eventos, frame nativo 240×36,
+secuencia completa y diferencia de pantalla; no depende de GTK,
+no interpreta texto OCR y no equivale a inspección visual de `ABC123`.
+Ambas ejecuciones usan `-nothrottle` y `-seconds_to_run 24`.
+No accede a documentos/NVRAM personales ni redistribuye las ROM privadas.
+
+### VONTAR aarch64 — PASS e instalado
+
+- Fuentes fijadas con Git blobs, pruebas estáticas reales en equipo:
+  `ASPRO_STABLE_PRO_UI_MATRIX_78_78_STATIC_PASS`,
+  `ASPRO_DIAG_PRO_NATIVE_KEYBOARD_REFERENCE_STATIC_PASS`,
+  `ASPRO_STABLE_LCD_RGB_240X36_CONVERSION_PASS`,
+  `ASPRO_STABLE_LCD_CACHE_AND_GUI_KEY_CONTRACT_STATIC_PASS`,
+  `ASPRO_VONTAR_PYTHON_SYNTAX_PASS`.
+- Constructor nativo existente `build_install_vontar_as2k_method.sh`
+  reutilizó objetos en `~/projects/mame-as2k-stable-arm64`,
+  restauró las fuentes donantes y restringió la salida a un solo
+  driver Pro; no fue una reconstrucción de MAME global ni DIAG.
+- Prueba antes de instalar:
+  `ASPRO_STABLE_BRIDGE_CONTROL_PASS wall_s=2.826`,
+  `ASPRO_STABLE_BRIDGE_ABC123_INJECTED_PASS wall_s=2.876`,
+  `ASPRO_STABLE_BRIDGE_LCD_CHANGED_PASS diff_rgba_bytes=264`,
+  `ASPRO_STABLE_BRIDGE_SMOKE_PASS`.
+- Instalación verificada `ASPRO_VONTAR_STABLE_NATIVE_INSTALL_PASS`,
+  `ASPRO_VONTAR_AP10_COMPLETE`, proceso final `exit=0`.
+  SHA256 del núcleo instalado:
+  `0f801f002175711bb5e6f733d798f2186cdc86cfbf0bda2987793a824c7773de`.
+  Blob del frontend instalado `64c411a616224d53754e92eef077eaa9a94bf9aa`.
+- Log privado:
+  `~/.local/share/alphasmart/private/aspro/logs/ap10-vontar-native.log`.
+- **No se reinició la ventana GTK**: requiere iniciar una nueva instancia
+  para aceptar visualmente las seis teclas y medir el arranque de GUI.
+
+### Surf ARMv7/musl — compilación nativa iniciada
+
+En Surf pasó la misma validación estática y el procedimiento nativo existente
+`deploy_surf_native_autonomous.sh` se lanzó, reutilizando `-j1`
+y la adaptación musl v2. Se insertó la misma prueba del puente antes
+de la instalación; **no marcar PASS ni binario sustituido hasta confirmar**
+la prueba y el fin real del proceso. Log privado
+`~/.local/share/alphasmart/private/aspro/logs/surf-native-build-install.log`.
+
+El resultado de rendimiento de `-nothrottle` es solo para MAME sin GTK;
+**no** demuestra la velocidad de la nueva ventana, que permanece pendiente
+de aceptación visual.
