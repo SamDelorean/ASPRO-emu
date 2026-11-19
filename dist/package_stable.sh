@@ -13,7 +13,15 @@ DRIVE="googledrive:ASPRO_TEMP/dist/$VER"
 WORK="${TMPDIR:-/tmp}/aspro-dist.$$"
 STATUS="$HOME/.local/share/alphasmart/private/aspro/logs/dist-$VER.status"
 mkdir -p "$(dirname "$STATUS")"
-fail() { echo "FAIL $*" | tee "$STATUS"; exit 1; }
+LOG="${ASPRO_DIST_LOG:-/tmp/aspro_dist_$VER.log}"
+fail() {
+  echo "FAIL $*" | tee "$STATUS"
+  rclone copyto "$STATUS" "$DRIVE/FAIL-$(uname -m).status" --retries 2 || :
+  [ -f "$LOG" ] && rclone copyto "$LOG" "$DRIVE/FAIL-$(uname -m).log" --retries 2 || :
+  exit 1
+}
+command -v rclone >/dev/null || { echo "FAIL rclone missing" > "$STATUS"; exit 1; }
+rclone lsd googledrive: --max-depth 0 >/dev/null 2>&1 || { echo "FAIL rclone remote googledrive: unavailable" > "$STATUS"; exit 1; }
 
 case "$(uname -m)" in
   aarch64) PLAT=linux-aarch64-glibc; EXPECT=0f801f002175711bb5e6f733d798f2186cdc86cfbf0bda2987793a824c7773de ;;
