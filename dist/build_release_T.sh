@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # T640 only. Build, package and publish ASPRO Stable (AP-10 sources) for
-#   linux-x86_64  (native, isolated copy of the ASPRO MAME 0.289 tree)
-#   linux-armv7-musl (existing T640 cross toolchain + Surf musl v2 bx fix)
+#   linux-x86_64   (native, GTK3 frontend) - always
+#   windows-x86_64 (MinGW-w64 cross, MAME UI only) - only if MinGW-w64 posix is installed
+# Other architectures are private user platforms and are NOT published.
 # Unattended, no polling. Donor trees are restored by the EXIT trap.
 # Never packages ROMs, payloads, NVRAM or logs with private data.
 set -Eeuo pipefail
@@ -11,10 +12,6 @@ SRC_REF=f196e57f6fc36f065f53579a1e358ea92e45c68e   # ASPRO-emu main, AP-10 stabl
 REPO=SamDelorean/ASPRO-emu
 BASE="$HOME/Projects/alphasmart"
 X86_TREE="$BASE/ASPRO-emu/build/send-mame"
-CROSS="$BASE/as2k-surface-cross"
-ARM_TREE="$CROSS/work/mame-as3k"
-SDK="$CROSS/armv7-eabihf--musl--stable-2025.08-1"
-SYS="$CROSS/alpine-armv7-sysroot"
 PRIV="$HOME/.local/share/alphasmart/private/aspro"
 WORK="$BASE/aspro-release-$VER"
 DRIVE="googledrive:ASPRO_TEMP/dist/$VER"
@@ -24,7 +21,7 @@ mkdir -p "$WORK/src" "$WORK/dist" "$WORK/backup"
 exec > >(tee -a "$LOG") 2>&1
 STEP=START
 OVERLAID=""
-FILES="src/mame/skeleton/alphasma.cpp src/devices/cpu/mc68hc11/mc68hc11.cpp src/devices/cpu/mc68hc11/mc68hc11.h src/mame/mame.lst 3rdparty/bx/include/bx/platform.h 3rdparty/bx/src/file.cpp 3rdparty/bx/src/thread.cpp"
+FILES="src/mame/skeleton/alphasma.cpp src/devices/cpu/mc68hc11/mc68hc11.cpp src/devices/cpu/mc68hc11/mc68hc11.h src/mame/mame.lst"
 
 restore() {
   for t in $OVERLAID; do
@@ -47,14 +44,13 @@ trap finish EXIT
 
 STEP=PREFLIGHT
 [ "$(uname -m)" = x86_64 ]
-for f in "$X86_TREE/makefile" "$X86_TREE/COPYING" "$ARM_TREE/makefile" "$ARM_TREE/COPYING" \
-         "$SDK/bin/arm-linux-g++" "$SDK/bin/arm-linux-strip" "$SYS/usr/lib/libSDL2.so"; do
+for f in "$X86_TREE/makefile" "$X86_TREE/COPYING"; do
   [ -e "$f" ] || { echo "BLOCKED missing $f"; exit 3; }
 done
 for c in make g++ pkg-config curl rclone python3 file readelf; do command -v "$c" >/dev/null || { echo "BLOCKED missing $c"; exit 3; }; done
 
 STEP=FETCH_SOURCES
-for f in alphasma.cpp aspro_ui.py aspro_session.py proven_hc11/mc68hc11.cpp proven_hc11/mc68hc11.h; do
+for f in alphasma.cpp aspro_ui.py aspro_session.py install_stable.sh proven_hc11/mc68hc11.cpp proven_hc11/mc68hc11.h; do
   mkdir -p "$WORK/src/$(dirname "$f")"
   curl -fLsS --retry 2 "https://raw.githubusercontent.com/$REPO/$SRC_REF/stable/$f" -o "$WORK/src/$f"
 done
@@ -62,6 +58,7 @@ blob() { python3 -c 'import hashlib,sys;d=open(sys.argv[1],"rb").read();print(ha
 [ "$(blob "$WORK/src/alphasma.cpp")" = 75e2d5ff78f89b6bc49d429b53b72a51bd953637 ]
 [ "$(blob "$WORK/src/aspro_ui.py")" = 64c411a616224d53754e92eef077eaa9a94bf9aa ]
 [ "$(blob "$WORK/src/aspro_session.py")" = 873f6263708b58025526bb9d056773b7b3272d40 ]
+[ "$(blob "$WORK/src/install_stable.sh")" = 3f7692fc1aef76c2b2dbab767606bc6a4eae5c7a ]
 [ "$(blob "$WORK/src/proven_hc11/mc68hc11.cpp")" = f25752fc03165c9938a456ae9c0d6d9e9b5841f0 ]
 [ "$(blob "$WORK/src/proven_hc11/mc68hc11.h")" = fb08eb8386b9c06712c34d883f91199160132d4b ]
 python3 -m py_compile "$WORK/src/aspro_ui.py" "$WORK/src/aspro_session.py"
@@ -90,33 +87,8 @@ package() {  # $1 = binary, $2 = platform, $3 = MAME tree
   cp "$1" "$p/bin/aspro-bin"; chmod 0755 "$p/bin/aspro-bin"
   cp "$WORK/src/aspro_ui.py" "$WORK/src/aspro_session.py" "$p/"
   cp "$3/COPYING" "$p/COPYING"
-  cat > "$p/install_stable.sh" <<'EOF'
-#!/usr/bin/env sh
-# Usage: sudo ./install_stable.sh bin/aspro-bin
-set -eu
-[ "$#" -eq 1 ] || { echo "Usage: install_stable.sh BUILT_ASPRO_BINARY"; exit 2; }
-CORE=$1
-[ -s "$CORE" ] && [ -x "$CORE" ] || { echo "Unverified ASPRO binary"; exit 2; }
-[ "$(id -u)" -eq 0 ] || { echo "Root required"; exit 2; }
-DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
-install -d -m 0755 /usr/local/libexec/aspro /usr/local/libexec/aspro/frontend /usr/local/bin /usr/local/share/applications
-install -m 0755 "$CORE" /usr/local/libexec/aspro/aspro-bin
-install -m 0755 "$DIR/aspro_ui.py" /usr/local/libexec/aspro/frontend/aspro_ui.py
-install -m 0755 "$DIR/aspro_session.py" /usr/local/libexec/aspro/frontend/aspro_session.py
-printf '#!/bin/sh\nexec /usr/bin/env python3 /usr/local/libexec/aspro/frontend/aspro_session.py "$@"\n' > /usr/local/bin/aspro
-chmod 0755 /usr/local/bin/aspro
-cat > /usr/local/share/applications/aspro.desktop <<'EOD'
-[Desktop Entry]
-Type=Application
-Name=ASPRO Emulator
-Comment=AlphaSmart Pro emulator
-Exec=/usr/local/bin/aspro
-Icon=input-keyboard
-Terminal=false
-Categories=Education;Utility;
-EOD
-echo "ASPRO_STABLE_INSTALLED: /usr/local/bin/aspro"
-EOF
+  # Same installer used for the Surf/Vontar AP-10 installs (reference layout).
+  cp "$WORK/src/install_stable.sh" "$p/install_stable.sh"
   chmod 0755 "$p/install_stable.sh"
   cat > "$p/README.txt" <<EOF
 ASPRO Stable $VER ($2) - emulador AlphaSmart Pro con interfaz GTK3.
@@ -178,72 +150,51 @@ restore; OVERLAID=""
 STEP=X86_PACKAGE
 package "$WORK/aspro-linux-x86_64" linux-x86_64 "$X86_TREE"
 
-# ---------------------------------------------------------------- ARMv7 musl
-STEP=ARM_OVERLAY
-overlay "$ARM_TREE"
-STEP=ARM_BX_MUSL_V2
-# Same reversible bx musl adaptation as stable/deploy_surf_native_autonomous.sh (Surf AP-10 PASS).
-python3 -B - "$ARM_TREE/3rdparty/bx/include/bx/platform.h" "$ARM_TREE/3rdparty/bx/src/file.cpp" "$ARM_TREE/3rdparty/bx/src/thread.cpp" <<'PY_BX_MUSL'
-from pathlib import Path
-import sys
-h,f,th=map(Path,sys.argv[1:])
-s=h.read_text()
-for before,after in [
- ('#define BX_CRT_NEWLIB 0','#define BX_CRT_NEWLIB 0\n#define BX_CRT_MUSL   0'),
- ('#\telif BX_PLATFORM_BSD\n#\t\tundef  BX_CRT_BSD\n#\t\tdefine BX_CRT_BSD 1',
-  '#\telif BX_PLATFORM_BSD\n#\t\tundef  BX_CRT_BSD\n#\t\tdefine BX_CRT_BSD 1'
-  '\n#\telif BX_PLATFORM_LINUX && !defined(__GLIBC__)\n#\t\tundef  BX_CRT_MUSL\n#\t\tdefine BX_CRT_MUSL 1'),
- ('\t&& !BX_CRT_NEWLIB','\t&& !BX_CRT_NEWLIB '+chr(92)+'\n\t&& !BX_CRT_MUSL'),
- ('#elif BX_CRT_NEWLIB','#elif BX_CRT_MUSL\n#\tdefine BX_CRT_NAME "musl libc"\n#elif BX_CRT_NEWLIB')]:
-    if s.count(before)!=1: raise SystemExit("BLOCKED bx platform.h layout: "+before[:40])
-    s=s.replace(before,after,1)
-t=f.read_text(); before='#\telif 0                   '+chr(92)
-if t.count(before)!=1: raise SystemExit("BLOCKED bx file.cpp layout")
-t=t.replace(before,'#\telif BX_CRT_MUSL\n#\t\tdefine fseeko64 fseeko\n#\t\tdefine ftello64 ftello\n'+before,1)
-q=th.read_text(); tb='#\tinclude <pthread.h>\n#\tif BX_PLATFORM_BSD'
-if q.count(tb)!=1: raise SystemExit("BLOCKED bx thread.cpp layout")
-q=q.replace(tb,'#\tinclude <pthread.h>\n#\tif BX_CRT_MUSL && BX_PLATFORM_LINUX\n#\t\tinclude <sys/prctl.h>\n#\tendif\n#\tif BX_PLATFORM_BSD',1)
-h.write_text(s); f.write_text(t); th.write_text(q)
-print("BX_MUSL_V2_APPLIED")
-PY_BX_MUSL
-WRAP="$WORK/wrap-armv7"; mkdir -p "$WRAP"
-cat > "$WRAP/cc" <<EOF
-#!/bin/sh
-exec "$SDK/bin/arm-linux-gcc" -march=armv7-a -mfpu=vfpv3-d16 -mfloat-abi=hard -iquote "$ARM_TREE/src/lib/util" -I"$SYS/usr/include" -L"$SYS/usr/lib" -Wl,-rpath-link,"$SYS/usr/lib" -Wl,-rpath-link,"$SYS/lib" "\$@"
-EOF
-cat > "$WRAP/cxx" <<EOF
-#!/bin/sh
-exec "$SDK/bin/arm-linux-g++" -march=armv7-a -mfpu=vfpv3-d16 -mfloat-abi=hard -iquote "$ARM_TREE/src/lib/util" -I"$SYS/usr/include" -L"$SYS/usr/lib" -Wl,-rpath-link,"$SYS/usr/lib" -Wl,-rpath-link,"$SYS/lib" "\$@" -O0 -fno-inline-functions
-EOF
-chmod 0755 "$WRAP/cc" "$WRAP/cxx"
-printf '#include <bx/platform.h>\n#if BX_CRT_NONE || !BX_CRT_MUSL\n#error BX musl CRT misdetected\n#endif\n' |
-  "$WRAP/cxx" -E -x c++ -I"$ARM_TREE/3rdparty/bx/include" - >/dev/null
-echo "BX_MUSL_CROSS_PREFLIGHT_PASS"
-STEP=ARM_BUILD
-(
-  cd "$ARM_TREE"
-  export PKG_CONFIG_SYSROOT_DIR="$SYS" PKG_CONFIG_LIBDIR="$SYS/usr/lib/pkgconfig:$SYS/usr/share/pkgconfig"
-  unset PKG_CONFIG_PATH || :
-  export CROSS_BUILD=1 PTR64=0 PLATFORM=arm NOASM=1 FORCE_DRC_C_BACKEND=1
-  export OVERRIDE_CC="$WRAP/cc" OVERRIDE_CXX="$WRAP/cxx" OVERRIDE_LD="$WRAP/cxx" OVERRIDE_AR="$SDK/bin/arm-linux-ar"
-  export NO_OPENGL=1 USE_QTDEBUG=0 NO_USE_XINPUT=1 NO_USE_PORTAUDIO=1 NO_USE_PULSEAUDIO=1 NO_USE_PIPEWIRE=1 NO_USE_MIDI=1 USE_TAPTUN=0 USE_PCAP=0
-  export TOOLS=0 TESTS=0 BENCHMARKS=0 SYMBOLS=0 STRIP_SYMBOLS=0 OPTIMIZE=2 SSE2=0 NOWERROR=1
-  export MAKEFLAGS='ARCHITECTURE='
-  make -j3 TARGET=mame SUBTARGET=aspro SOURCES=src/mame/skeleton/alphasma.cpp REGENIE=1 BUILDDIR=build/aspro-stable-armv7-musl
-)
-[ -s "$ARM_TREE/aspro" ]
-STEP=ARM_VERIFY
-file -b "$ARM_TREE/aspro" | grep -Eq 'ELF 32-bit.*ARM'
-readelf -l "$ARM_TREE/aspro" | grep -q 'ld-musl-armhf.so.1'
-"$SDK/bin/arm-linux-strip" -s "$ARM_TREE/aspro"
-cp "$ARM_TREE/aspro" "$WORK/aspro-linux-armv7-musl"
-restore; OVERLAID=""
-STEP=ARM_PACKAGE
-package "$WORK/aspro-linux-armv7-musl" linux-armv7-musl "$ARM_TREE"
+# ---------------------------------------------------------------- Windows x86_64 (optional)
+WIN_OK=0
+STEP=WIN_TOOLCHAIN
+if command -v x86_64-w64-mingw32-g++-posix >/dev/null && command -v x86_64-w64-mingw32-windres >/dev/null; then
+  MW="$WORK/mingw64"; mkdir -p "$MW/bin"
+  for t in gcc g++ gcc-ar; do ln -sf "$(command -v x86_64-w64-mingw32-$t-posix)" "$MW/bin/x86_64-w64-mingw32-$t"; done
+  for t in windres strip ar; do ln -sf "$(command -v x86_64-w64-mingw32-$t)" "$MW/bin/x86_64-w64-mingw32-$t"; done
+  overlay "$X86_TREE"
+  STEP=WIN_BUILD
+  if (cd "$X86_TREE" && unset MAKEFLAGS && CCACHE_DISABLE=1 make -j3 TARGET=mame SUBTARGET=aspro \
+        SOURCES=src/mame/skeleton/alphasma.cpp TARGETOS=windows PTR64=1 MINGW64="$MW" \
+        REGENIE=1 TOOLS=0 USE_QTDEBUG=0 BUILDDIR=build/aspro-stable-win64) \
+     && [ -s "$X86_TREE/aspro.exe" ] && file -b "$X86_TREE/aspro.exe" | grep -q 'PE32+.*x86-64'; then
+    "$MW/bin/x86_64-w64-mingw32-strip" -s "$X86_TREE/aspro.exe"
+    cp "$X86_TREE/aspro.exe" "$WORK/aspro-windows-x86_64.exe"
+    WIN_OK=1
+  else
+    echo "WINDOWS_BUILD_FAILED; Linux release continues"
+  fi
+  restore; OVERLAID=""
+else
+  echo "WINDOWS_SKIPPED_NO_MINGW (x86_64-w64-mingw32-g++-posix/windres not installed on T)"
+fi
+if [ "$WIN_OK" = 1 ]; then
+  STEP=WIN_PACKAGE
+  wn="aspro-stable-$VER-windows-x86_64"; wp="$WORK/pkg/$wn"; rm -rf "$wp"; mkdir -p "$wp"
+  cp "$WORK/aspro-windows-x86_64.exe" "$wp/aspro.exe"
+  cp "$X86_TREE/COPYING" "$wp/COPYING.txt"
+  printf '%s\r\n' "ASPRO Stable $VER (Windows x86_64) - nucleo MAME del AlphaSmart Pro, sin interfaz GTK." "" \
+    "Uso:  aspro.exe asmapro -rompath roms" \
+    "ROM:  NO incluida. Coloque asmapro.zip (alphasmartpro212.rom) y ks0066.zip (ks0066_f05.bin) en la carpeta roms." \
+    "Fuente: https://github.com/$REPO/tree/$SRC_REF/stable" "Licencia: MAME, GPL-2.0-or-later (COPYING.txt)." > "$wp/README.txt"
+  (cd "$wp" && sha256sum aspro.exe COPYING.txt README.txt > SHA256SUMS.txt)
+  python3 - "$WORK/pkg" "$wn" "$WORK/dist/$wn.zip" <<'PYZIP'
+import sys,zipfile,pathlib
+base,name,out=pathlib.Path(sys.argv[1]),sys.argv[2],sys.argv[3]
+with zipfile.ZipFile(out,"w",zipfile.ZIP_DEFLATED) as z:
+    for f in sorted((base/name).rglob("*")): z.write(f,f.relative_to(base))
+PYZIP
+  echo "PACKAGED $wn"
+fi
 
 # ---------------------------------------------------------------- publish
 STEP=CHECKSUMS
-(cd "$WORK/dist" && sha256sum *.tar.gz > SHA256SUMS.txt && cat SHA256SUMS.txt)
+(cd "$WORK/dist" && sha256sum *.tar.gz $(ls *.zip 2>/dev/null) > SHA256SUMS.txt && cat SHA256SUMS.txt)
 STEP=DRIVE_UPLOAD
 rclone copy "$WORK/dist" "$DRIVE" --retries 2 --timeout 300s
 STEP=GITHUB_RELEASE
@@ -252,16 +203,15 @@ ASPRO Stable $VER: emulador AlphaSmart Pro (MAME 0.289, driver \`asmapro\`) con 
 
 Fuentes AP-10: \`stable/\` en $SRC_REF (driver con matriz Pro de 78 teclas, LCD GTK optimizado).
 Paquetes compilados en T640:
-- \`linux-x86_64\`: nativo; \`-validate\` y listado \`asmapro\` PASS.
-- \`linux-armv7-musl\`: compilación cruzada (postmarketOS/Alpine ARMv7). No probado en Surf todavía:
-  el binario instalado en Surf es la compilación nativa AP-10 (SHA-256 28e13681…).
+- \`linux-x86_64\`: nativo con interfaz GTK3; \`-validate\` y listado \`asmapro\` PASS.
+- \`windows-x86_64\` (si se adjunta): núcleo MAME con MinGW-w64, interfaz propia de MAME, sin GTK; no probado en Windows.
 
 Instalación: \`tar xzf <paquete>.tar.gz && cd <paquete> && sudo ./install_stable.sh bin/aspro-bin\`.
 No incluye ROMs. Pendiente: prueba interactiva GTK posinstalación (teclado, PC, bootstrap).
 Licencia MAME GPL-2.0-or-later (COPYING en cada paquete).
 EOF
 if command -v gh >/dev/null && gh auth status >/dev/null 2>&1; then
-  gh release create "$VER" "$WORK"/dist/*.tar.gz "$WORK/dist/SHA256SUMS.txt" \
+  gh release create "$VER" "$WORK"/dist/*.tar.gz $(ls "$WORK"/dist/*.zip 2>/dev/null) "$WORK/dist/SHA256SUMS.txt" \
     --repo "$REPO" --target main --title "ASPRO Stable $VER" --notes-file "$WORK/notes.md"
   echo "GITHUB_RELEASE_PASS https://github.com/$REPO/releases/tag/$VER"
 else
