@@ -130,8 +130,16 @@ STEP=X86_VERIFY
 file -b "$X86_TREE/aspro" | grep -Eq 'ELF 64-bit.*x86-64'
 "$X86_TREE/aspro" -validate
 check_drivers "$X86_TREE/aspro"
-strip -s "$X86_TREE/aspro"
 cp "$X86_TREE/aspro" "$WORK/aspro-linux-x86_64"
+# strip only if the stripped copy still loads (strip -s broke relocations on 2026-11-19).
+cp "$WORK/aspro-linux-x86_64" "$WORK/aspro-linux-x86_64.stripped"
+strip -s "$WORK/aspro-linux-x86_64.stripped"
+if "$WORK/aspro-linux-x86_64.stripped" -validate >/dev/null 2>&1; then
+  mv -f "$WORK/aspro-linux-x86_64.stripped" "$WORK/aspro-linux-x86_64"; echo "STRIPPED_BINARY_VALIDATED"
+else
+  rm -f "$WORK/aspro-linux-x86_64.stripped"; echo "STRIP_BREAKS_BINARY; publishing unstripped"
+fi
+"$WORK/aspro-linux-x86_64" -validate
 if [ -s "$PRIV/roms/firmware.bin" ] && [ -s "$PRIV/roms/ks0066_f05.bin" ]; then
   STEP=X86_ROM_SMOKE
   mkdir -p "$WORK/smoke/roms" "$WORK/smoke/snap"
@@ -163,7 +171,6 @@ if command -v x86_64-w64-mingw32-g++-posix >/dev/null && command -v x86_64-w64-m
         SOURCES=src/mame/skeleton/alphasma.cpp TARGETOS=windows PTR64=1 MINGW64="$MW" \
         REGENIE=1 TOOLS=0 USE_QTDEBUG=0 BUILDDIR=build/aspro-stable-win64) \
      && [ -s "$X86_TREE/aspro.exe" ] && file -b "$X86_TREE/aspro.exe" | grep -q 'PE32+.*x86-64'; then
-    "$MW/bin/x86_64-w64-mingw32-strip" -s "$X86_TREE/aspro.exe"
     cp "$X86_TREE/aspro.exe" "$WORK/aspro-windows-x86_64.exe"
     WIN_OK=1
   else
