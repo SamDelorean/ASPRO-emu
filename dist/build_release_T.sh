@@ -150,8 +150,9 @@ src,dst=map(Path,sys.argv[1:])
 for a,m,f in (("asmapro.zip","alphasmartpro212.rom","roms/firmware.bin"),("ks0066.zip","ks0066_f05.bin","roms/ks0066_f05.bin")):
     with zipfile.ZipFile(dst/a,"w",zipfile.ZIP_STORED) as z: z.write(src/f,arcname=m)
 PY
-  SDL_VIDEODRIVER=dummy timeout 60 "$WORK/aspro-linux-x86_64" asmapro -rompath "$WORK/smoke/roms" \
-    -sound none -video none -nothrottle -seconds_to_run 2 -skip_gameinfo -snapshot_directory "$WORK/smoke/snap"
+  # T640 libudev.so.1 currently fails in ld.so (system issue, 2026-11-20): keep udev out of the smoke run.
+  SDL_VIDEODRIVER=dummy SDL_JOYSTICK_DISABLE_UDEV=1 timeout 60 "$WORK/aspro-linux-x86_64" asmapro -rompath "$WORK/smoke/roms" \
+    -sound none -video none -joystickprovider none -nothrottle -seconds_to_run 2 -skip_gameinfo -snapshot_directory "$WORK/smoke/snap"
   echo "X86_ROM_SMOKE_PASS"
 fi
 restore; OVERLAID=""
